@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gameService } from '../services/gameService';
 import Timer from './Timer';
@@ -15,11 +15,9 @@ function NightPhase({ game, player }) {
   const { user } = useAuth();
   const [showRole, setShowRole] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
 
   const alivePlayers = Object.values(game.players || {}).filter(p => p.isAlive && p.uid !== user.uid);
   const roleInfo = ROLE_INFO[player.role] || ROLE_INFO.villager;
-  const hasAction = ['mafia', 'detective', 'doctor'].includes(player.role);
   const isMafia = player.role === 'mafia';
 
   const mafiaMembers = isMafia 
@@ -28,15 +26,34 @@ function NightPhase({ game, player }) {
 
   const actions = game.actions || {};
   const aliveCount = Object.values(game.players || {}).filter(p => p.isAlive).length;
-  const votedCount = Object.keys(actions).length;
-  const waitingCount = aliveCount - votedCount;
+  const actedCount = Object.keys(actions).length;
+  const waitingCount = aliveCount - actedCount;
+  const hasVoted = !!actions[user.uid];
 
   useEffect(() => {
-    if (actions[user.uid]) {
-      setSubmitted(true);
-      setSelectedTarget(actions[user.uid].targetId);
+    const myAction = actions[user.uid];
+    if (myAction) {
+      setSelectedTarget(myAction.targetId);
     }
   }, [actions, user.uid]);
+
+  const submitAction = useCallback(async (targetId) => {
+    try {
+      await gameService.submitAction(user.uid, player.role, targetId);
+    } catch (error) {
+      console.error('Submit action error:', error);
+    }
+  }, [user.uid, player.role]);
+
+  const handleSelectPlayer = async (playerId) => {
+    setSelectedTarget(playerId);
+    await submitAction(playerId);
+  };
+
+  const handleNoVote = async () => {
+    setSelectedTarget('skip');
+    await submitAction('skip');
+  };
 
   const getMafiaVotes = () => {
     if (!isMafia) return [];
@@ -45,7 +62,8 @@ function NightPhase({ game, player }) {
       return {
         player: m,
         targetId: action?.targetId,
-        targetName: action?.targetId ? game.players[action.targetId]?.name : null
+        targetName: action?.targetId === 'skip' ? 'No Vote' : 
+          (action?.targetId ? game.players[action.targetId]?.name : null)
       };
     });
   };
@@ -69,7 +87,8 @@ function NightPhase({ game, player }) {
     return {
       player: randomPartner,
       targetId: partnerAction.targetId,
-      targetName: game.players[partnerAction.targetId]?.name
+      targetName: partnerAction.targetId === 'skip' ? 'No Vote' : 
+        game.players[partnerAction.targetId]?.name
     };
   };
 
@@ -88,18 +107,6 @@ function NightPhase({ game, player }) {
         return [partnerVote.player.color];
       }
       return [];
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedTarget && hasAction) return;
-
-    try {
-      await gameService.submitAction(user.uid, player.role, selectedTarget || 'skip');
-      setSubmitted(true);
-    } catch (error) {
-      console.error('Submit action error:', error);
-      alert(error.message || 'Failed to submit action');
     }
   };
 
@@ -159,8 +166,7 @@ function NightPhase({ game, player }) {
                   key={p.uid}
                   className={`player-card ${isSelected ? 'selected' : ''}`}
                   style={{ borderColor: p.color }}
-                  onClick={() => !submitted && setSelectedTarget(p.uid)}
-                  disabled={submitted}
+                  onClick={() => handleSelectPlayer(p.uid)}
                 >
                   {p.photoURL && (
                     <img src={p.photoURL} alt={p.name} className="player-avatar" />
@@ -178,12 +184,24 @@ function NightPhase({ game, player }) {
               );
             })}
           </div>
+
+          <button 
+            className={`btn-no-vote ${selectedTarget === 'skip' ? 'selected' : ''}`}
+            onClick={handleNoVote}
+          >
+            🚫 No Vote
+          </button>
         </div>
 
         <div className="vote-status">
-          {selectedTarget && (
+          {selectedTarget && selectedTarget !== 'skip' && (
             <div className="your-vote">
               Your Vote: <strong>{game.players[selectedTarget]?.name}</strong>
+            </div>
+          )}
+          {selectedTarget === 'skip' && (
+            <div className="your-vote">
+              Your Vote: <strong>No Vote</strong>
             </div>
           )}
           
@@ -194,7 +212,7 @@ function NightPhase({ game, player }) {
                   <span className="vote-color" style={{ backgroundColor: m.color }} />
                   <span>{m.name}</span>
                   <span className="vote-arrow">→</span>
-                  <span>{targetName || "hasn't voted yet"}</span>
+                  <span>{targetName || "hasn't voted"}</span>
                 </div>
               ))}
             </div>
@@ -211,25 +229,12 @@ function NightPhase({ game, player }) {
         </div>
 
         <div className="action-area">
-          {waitingCount > 0 && waitingCount <= 3 && submitted && (
-            <div className="waiting-status">
-              ⚡ Waiting for {waitingCount} player{waitingCount > 1 ? 's' : ''}...
-            </div>
-          )}
-          
-          {!submitted ? (
-            <button
-              className="btn-submit"
-              onClick={handleSubmit}
-              disabled={hasAction && !selectedTarget}
-            >
-              Confirm {roleInfo.action}
-            </button>
-          ) : (
-            <div className="submitted-message">
-              ✓ Action submitted. Waiting for others...
-            </div>
-          )}
+          <div className="vote-count-status">
+            Voted: {actedCount}/{aliveCount}
+            {waitingCount > 0 && hasVoted && (
+              <span className="waiting-flash"> ⚡ Waiting for {waitingCount}...</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

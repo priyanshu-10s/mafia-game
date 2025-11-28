@@ -126,7 +126,35 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.btn-no-vote {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  background: #374151;
+  color: #9CA3AF;
+  border: 2px dashed #4B5563;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.2s;
   margin-bottom: 1.5rem;
+}
+
+.btn-no-vote:hover {
+  background: #4B5563;
+  border-color: #6B7280;
+  color: #F9FAFB;
+}
+
+.btn-no-vote.selected {
+  background: #1F2937;
+  border-style: solid;
+  border-color: #8B5CF6;
+  color: #F9FAFB;
+  box-shadow: 0 0 0 2px #8B5CF6;
 }
 
 .player-card {
@@ -252,43 +280,23 @@
   text-align: center;
 }
 
-.waiting-status {
+.vote-count-status {
+  color: #9CA3AF;
+  font-size: 0.9rem;
+  padding: 0.75rem;
+  background: #374151;
+  border-radius: 8px;
+}
+
+.waiting-flash {
   color: #F59E0B;
   font-weight: 600;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background: rgba(245, 158, 11, 0.1);
-  border-radius: 8px;
+  animation: pulse 1s infinite;
 }
 
-.btn-submit {
-  width: 100%;
-  padding: 1rem 2rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, #8B5CF6, #EC4899);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: transform 0.2s, opacity 0.2s;
-}
-
-.btn-submit:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.btn-submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.submitted-message {
-  padding: 1rem;
-  background: #10B981;
-  color: white;
-  border-radius: 8px;
-  font-weight: 600;
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 @media (max-width: 640px) {

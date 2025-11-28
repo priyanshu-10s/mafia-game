@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gameService } from '../services/gameService';
 import Timer from './Timer';
@@ -7,20 +7,39 @@ import './DayPhase.css';
 function DayPhase({ game, player }) {
   const { user } = useAuth();
   const [selectedTarget, setSelectedTarget] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
 
   const alivePlayers = Object.values(game.players || {}).filter(p => p.isAlive);
   const votes = game.votes || {};
   const aliveCount = alivePlayers.length;
   const votedCount = Object.keys(votes).length;
   const waitingCount = aliveCount - votedCount;
+  const hasVoted = !!votes[user.uid];
 
   useEffect(() => {
-    if (votes[user.uid]) {
-      setSubmitted(true);
-      setSelectedTarget(votes[user.uid].targetId);
+    const myVote = votes[user.uid];
+    if (myVote) {
+      setSelectedTarget(myVote.targetId);
     }
   }, [votes, user.uid]);
+
+  const submitVote = useCallback(async (targetId) => {
+    try {
+      await gameService.submitVote(user.uid, targetId);
+    } catch (error) {
+      console.error('Vote error:', error);
+    }
+  }, [user.uid]);
+
+  const handleSelectPlayer = async (playerId) => {
+    if (playerId === user.uid) return;
+    setSelectedTarget(playerId);
+    await submitVote(playerId);
+  };
+
+  const handleNoVote = async () => {
+    setSelectedTarget('skip');
+    await submitVote('skip');
+  };
 
   const getVoteCount = (playerId) => {
     return Object.values(votes).filter(v => v.targetId === playerId).length;
@@ -31,18 +50,6 @@ function DayPhase({ game, player }) {
       .filter(([uid, vote]) => vote.targetId === playerId)
       .map(([uid]) => game.players[uid]?.color)
       .filter(Boolean);
-  };
-
-  const handleVote = async () => {
-    if (!selectedTarget) return;
-
-    try {
-      await gameService.submitVote(user.uid, selectedTarget);
-      setSubmitted(true);
-    } catch (error) {
-      console.error('Vote error:', error);
-      alert(error.message || 'Failed to submit vote');
-    }
   };
 
   return (
@@ -68,10 +75,10 @@ function DayPhase({ game, player }) {
             return (
               <button
                 key={p.uid}
-                className={`player-vote-card ${isSelected ? 'selected' : ''}`}
+                className={`player-vote-card ${isSelected ? 'selected' : ''} ${isYou ? 'is-you' : ''}`}
                 style={{ borderLeftColor: p.color }}
-                onClick={() => !submitted && !isYou && setSelectedTarget(p.uid)}
-                disabled={submitted || isYou}
+                onClick={() => handleSelectPlayer(p.uid)}
+                disabled={isYou}
               >
                 <div className="player-info">
                   {p.photoURL && (
@@ -100,34 +107,32 @@ function DayPhase({ game, player }) {
           })}
         </div>
 
+        <button 
+          className={`btn-no-vote ${selectedTarget === 'skip' ? 'selected' : ''}`}
+          onClick={handleNoVote}
+        >
+          🚫 No Vote
+        </button>
+
         <div className="vote-status">
-          {selectedTarget && (
+          {selectedTarget && selectedTarget !== 'skip' && (
             <div className="your-vote">
               Your Vote: <strong>{game.players[selectedTarget]?.name}</strong>
             </div>
           )}
+          {selectedTarget === 'skip' && (
+            <div className="your-vote">
+              Your Vote: <strong>No Vote</strong>
+            </div>
+          )}
           
           <div className="confirmed-status">
-            Confirmed: {votedCount}/{aliveCount}
-            {waitingCount > 0 && waitingCount <= 3 && submitted && (
+            Voted: {votedCount}/{aliveCount}
+            {waitingCount > 0 && hasVoted && (
               <span className="waiting-flash"> ⚡ Waiting for {waitingCount}...</span>
             )}
           </div>
         </div>
-
-        {!submitted ? (
-          <button
-            className="btn-vote"
-            onClick={handleVote}
-            disabled={!selectedTarget}
-          >
-            Confirm Vote
-          </button>
-        ) : (
-          <div className="submitted-message">
-            ✓ Vote submitted. Waiting for others...
-          </div>
-        )}
       </div>
     </div>
   );
