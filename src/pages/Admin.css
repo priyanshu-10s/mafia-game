@@ -1,0 +1,102 @@
+.admin-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+}
+
+.admin-login,
+.admin-panel {
+  max-width: 500px;
+  width: 100%;
+  background: #374151;
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.admin-login h1,
+.admin-panel h1 {
+  text-align: center;
+  color: #F9FAFB;
+  margin-bottom: 2rem;
+}
+
+.admin-section {
+  margin-bottom: 2rem;
+}
+
+.admin-section h2 {
+  color: #D1D5DB;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.admin-input {
+  width: 100%;
+  padding: 1rem;
+  background: #1F2937;
+  color: #F9FAFB;
+  border: 2px solid #4B5563;
+  border-radius: 8px;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-input:focus {
+  outline: none;
+  border-color: #8B5CF6;
+}
+
+.btn-admin {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #8B5CF6, #EC4899);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-admin:hover {
+  transform: translateY(-2px);
+}
+
+.admin-message {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.admin-message.success {
+  background: #10B981;
+  color: white;
+}
+
+.admin-message.error {
+  background: #EF4444;
+  color: white;
+}
+
+.btn-back {
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  color: #9CA3AF;
+  border: 2px solid #4B5563;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.btn-back:hover {
+  border-color: #6B7280;
+  color: #D1D5DB;
+}
+

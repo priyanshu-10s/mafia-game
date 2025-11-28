@@ -1,0 +1,76 @@
+.game-end-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+}
+
+.game-end-content {
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.winner-banner {
+  padding: 3rem 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+.winner-banner.winner {
+  background: linear-gradient(135deg, #10B981, #059669);
+}
+
+.winner-banner.loser {
+  background: linear-gradient(135deg, #EF4444, #DC2626);
+}
+
+.winner-banner h1 {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  color: white;
+}
+
+.winner-banner h2 {
+  font-size: 1.5rem;
+  color: white;
+  opacity: 0.9;
+}
+
+.your-role {
+  margin-bottom: 2rem;
+}
+
+.your-role p {
+  color: #9CA3AF;
+  margin-bottom: 1rem;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  color: white;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.btn-leave {
+  width: 100%;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #8B5CF6, #EC4899);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-leave:hover {
+  transform: translateY(-2px);
+}
+

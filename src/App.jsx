@@ -1,20 +1,30 @@
-import { useState } from 'react'
-import FirebaseTest from './components/FirebaseTest'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { GameProvider } from './contexts/GameContext';
+import Home from './pages/Home';
+import Lobby from './pages/Lobby';
+import Game from './pages/Game';
+import Admin from './pages/Admin';
+import './App.css';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>🎭 Mafia Game</h1>
-        <p>A game of deception</p>
-      </header>
-      <main style={{ width: '100%', padding: '2rem' }}>
-        <FirebaseTest />
-      </main>
-    </div>
-  )
+    <AuthProvider>
+      <GameProvider>
+        <Router>
+          <div className="App">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/lobby" element={<Lobby />} />
+              <Route path="/game" element={<Game />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </Router>
+      </GameProvider>
+    </AuthProvider>
+  );
 }
 
-export default App
-
+export default App;
