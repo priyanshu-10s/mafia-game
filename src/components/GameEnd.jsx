@@ -1,15 +1,25 @@
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
 import { gameService } from '../services/gameService';
+import sounds from '../utils/sounds';
 import './GameEnd.css';
 
 function GameEnd({ game, player }) {
   const { user, logout } = useAuth();
   const { isHost } = useGame();
   const navigate = useNavigate();
+  const soundPlayed = useRef(false);
 
   const winner = game.winner || 'unknown';
+
+  useEffect(() => {
+    if (!soundPlayed.current) {
+      sounds.gameEnd();
+      soundPlayed.current = true;
+    }
+  }, []);
   const isWinner = (player.role === 'mafia' && winner === 'mafia') ||
                    (player.role !== 'mafia' && winner === 'villagers');
 

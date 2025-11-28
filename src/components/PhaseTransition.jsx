@@ -1,17 +1,25 @@
 import { useState, useEffect } from 'react';
+import sounds from '../utils/sounds';
 import './PhaseTransition.css';
 
 function PhaseTransition({ phase, onComplete }) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
+    // Play phase sound
+    if (phase === 'night') {
+      sounds.night();
+    } else if (phase === 'day') {
+      sounds.day();
+    }
+
     const timer = setTimeout(() => {
       setVisible(false);
       if (onComplete) onComplete();
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [onComplete]);
+  }, [phase, onComplete]);
 
   if (!visible) return null;
 

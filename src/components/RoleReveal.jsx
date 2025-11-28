@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import sounds from '../utils/sounds';
 import './RoleReveal.css';
 
 const ROLE_INFO = {
@@ -34,7 +35,15 @@ function RoleReveal({ game, player, onContinue }) {
     ? Object.values(game.players || {}).filter(p => p.role === 'mafia' && p.uid !== player.uid).sort((a, b) => a.name.localeCompare(b.name))
     : [];
 
+  const soundPlayed = useRef(false);
+
   useEffect(() => {
+    // Play game start sound only once
+    if (!soundPlayed.current) {
+      sounds.gameStart();
+      soundPlayed.current = true;
+    }
+
     const timer = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {

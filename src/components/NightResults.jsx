@@ -1,10 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import sounds from '../utils/sounds';
 import './NightResults.css';
 
 function NightResults({ game, killedPlayer, onContinue }) {
   const { user } = useAuth();
   const [show, setShow] = useState(true);
+  const soundPlayed = useRef(false);
+
+  useEffect(() => {
+    if (!soundPlayed.current) {
+      if (killedPlayer) {
+        sounds.death();
+      }
+      soundPlayed.current = true;
+    }
+  }, [killedPlayer]);
   
   const alivePlayers = Object.values(game.players || {}).filter(p => p.isAlive).sort((a, b) => a.name.localeCompare(b.name));
   const deadPlayers = Object.values(game.players || {}).filter(p => !p.isAlive).sort((a, b) => a.name.localeCompare(b.name));
