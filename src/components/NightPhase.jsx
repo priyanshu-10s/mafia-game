@@ -65,29 +65,36 @@ function NightPhase({ game, player }) {
   const getRandomPartnerVote = () => {
     if (isMafia) return null;
     
-    // Only show fake partner votes if there are 2+ mafia (to match mafia experience)
+    // Only show fake votes if there are 2+ mafia (to match mafia experience)
     const numMafia = game.settings?.numMafia || 2;
     if (numMafia < 2) return null;
     
-    // Get all other players who have voted
-    const votedPlayers = Object.entries(actions)
-      .filter(([uid, action]) => {
-        const p = game.players[uid];
-        return p && p.isAlive && uid !== user.uid && action.targetId;
-      })
-      .map(([uid, action]) => ({
-        player: game.players[uid],
-        targetId: action.targetId,
-        targetName: game.players[action.targetId]?.name
-      }));
+    const otherAlivePlayers = Object.values(game.players || {}).filter(
+      p => p.isAlive && p.uid !== user.uid
+    );
     
-    if (votedPlayers.length === 0) return null;
+    if (otherAlivePlayers.length < 2) return null;
     
-    // Pick one randomly (but consistently for this user/round)
-    const seedIndex = (game.round || 1) + user.uid.charCodeAt(0);
-    const randomIndex = seedIndex % votedPlayers.length;
+    // Generate deterministic but FAKE random values based on user + round
+    // This is completely random - not based on any real votes
+    const seed = (game.round || 1) * 1000 + user.uid.charCodeAt(0) + (user.uid.charCodeAt(1) || 0);
     
-    return votedPlayers[randomIndex];
+    // Pick a random "fake partner" (just for their color)
+    const partnerIndex = seed % otherAlivePlayers.length;
+    const fakePartner = otherAlivePlayers[partnerIndex];
+    
+    // Pick a random target (different from fake partner)
+    const possibleTargets = otherAlivePlayers.filter(p => p.uid !== fakePartner.uid);
+    if (possibleTargets.length === 0) return null;
+    
+    const targetIndex = (seed * 7) % possibleTargets.length;
+    const fakeTarget = possibleTargets[targetIndex];
+    
+    return {
+      player: fakePartner,
+      targetId: fakeTarget.uid,
+      targetName: fakeTarget.name
+    };
   };
 
   const getVoteIndicators = (playerId) => {
