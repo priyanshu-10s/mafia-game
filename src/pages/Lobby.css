@@ -91,9 +91,26 @@
   font-weight: 600;
 }
 
+.you-badge {
+  background: #EC4899;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .player-status {
   font-size: 0.875rem;
   color: #9CA3AF;
+}
+
+.status-online {
+  color: #10B981;
+}
+
+.status-disconnected {
+  color: #F59E0B;
 }
 
 .kick-btn {

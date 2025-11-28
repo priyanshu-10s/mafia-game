@@ -1,0 +1,29 @@
+.timer {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #F9FAFB;
+  background: #374151;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 90px;
+  justify-content: center;
+}
+
+.timer-loading {
+  color: #6B7280;
+}
+
+.timer-low {
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.2);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+

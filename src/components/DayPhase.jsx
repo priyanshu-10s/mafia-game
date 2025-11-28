@@ -1,32 +1,37 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gameService } from '../services/gameService';
+import Timer from './Timer';
 import './DayPhase.css';
 
 function DayPhase({ game, player }) {
   const { user } = useAuth();
   const [selectedTarget, setSelectedTarget] = useState(null);
   const [submitted, setSubmitted] = useState(false);
-  const [voteCounts, setVoteCounts] = useState({});
 
   const alivePlayers = Object.values(game.players || {}).filter(p => p.isAlive);
+  const votes = game.votes || {};
+  const aliveCount = alivePlayers.length;
+  const votedCount = Object.keys(votes).length;
+  const waitingCount = aliveCount - votedCount;
 
   useEffect(() => {
-    if (game.votes && game.votes[user.uid]) {
+    if (votes[user.uid]) {
       setSubmitted(true);
-      setSelectedTarget(game.votes[user.uid].targetId);
+      setSelectedTarget(votes[user.uid].targetId);
     }
+  }, [votes, user.uid]);
 
-    const counts = {};
-    if (game.votes) {
-      Object.values(game.votes).forEach(vote => {
-        if (vote.targetId) {
-          counts[vote.targetId] = (counts[vote.targetId] || 0) + 1;
-        }
-      });
-    }
-    setVoteCounts(counts);
-  }, [game.votes, user.uid]);
+  const getVoteCount = (playerId) => {
+    return Object.values(votes).filter(v => v.targetId === playerId).length;
+  };
+
+  const getVoteIndicators = (playerId) => {
+    return Object.entries(votes)
+      .filter(([uid, vote]) => vote.targetId === playerId)
+      .map(([uid]) => game.players[uid]?.color)
+      .filter(Boolean);
+  };
 
   const handleVote = async () => {
     if (!selectedTarget) return;
@@ -40,65 +45,73 @@ function DayPhase({ game, player }) {
     }
   };
 
-  const getVoteIndicators = (playerId) => {
-    if (!game.votes) return [];
-    return Object.entries(game.votes)
-      .filter(([uid, vote]) => vote.targetId === playerId)
-      .map(([uid]) => game.players[uid]?.color)
-      .filter(Boolean);
-  };
-
   return (
     <div className="day-phase-container">
       <div className="day-phase-content">
-        <h1 className="phase-title">☀️ Day Phase</h1>
-        <p className="phase-subtitle">Round {game.round} - Discussion & Voting</p>
+        <div className="phase-header">
+          <div className="phase-info">
+            <span className="round-badge">Round {game.round}</span>
+            <span className="phase-name">☀️ DAY VOTING</span>
+          </div>
+          <Timer endTime={game.dayEndTime} />
+        </div>
 
-        <div className="voting-section">
-          <h2 className="section-title">Vote to Eliminate</h2>
+        <h1 className="phase-title">Vote to Eliminate</h1>
 
-          <div className="players-list">
-            {alivePlayers.map((p) => {
-              const votes = getVoteIndicators(p.uid);
-              const isSelected = selectedTarget === p.uid;
-              
-              return (
-                <button
-                  key={p.uid}
-                  className={`player-vote-card ${isSelected ? 'selected' : ''}`}
-                  style={{ borderLeftColor: p.color }}
-                  onClick={() => !submitted && p.uid !== user.uid && setSelectedTarget(p.uid)}
-                  disabled={submitted || p.uid === user.uid}
-                >
-                  <div className="player-info">
-                    {p.photoURL && (
-                      <img src={p.photoURL} alt={p.name} className="player-avatar" />
-                    )}
-                    <div className="player-details">
-                      <div className="player-name">
-                        {p.name}
-                        {p.uid === user.uid && <span className="you-badge">You</span>}
-                      </div>
-                      {votes.length > 0 && (
+        <div className="players-list">
+          {alivePlayers.map((p) => {
+            const voteCount = getVoteCount(p.uid);
+            const voteColors = getVoteIndicators(p.uid);
+            const isSelected = selectedTarget === p.uid;
+            const isYou = p.uid === user.uid;
+            
+            return (
+              <button
+                key={p.uid}
+                className={`player-vote-card ${isSelected ? 'selected' : ''}`}
+                style={{ borderLeftColor: p.color }}
+                onClick={() => !submitted && !isYou && setSelectedTarget(p.uid)}
+                disabled={submitted || isYou}
+              >
+                <div className="player-info">
+                  {p.photoURL && (
+                    <img src={p.photoURL} alt={p.name} className="player-avatar" />
+                  )}
+                  <div className="player-details">
+                    <div className="player-name">
+                      {p.name}
+                      {isYou && <span className="you-badge">You</span>}
+                    </div>
+                    <div className="vote-info">
+                      <span className="vote-count">{voteCount} vote{voteCount !== 1 ? 's' : ''}</span>
+                      {voteColors.length > 0 && (
                         <div className="vote-indicators">
-                          {votes.map((color, idx) => (
-                            <span
-                              key={idx}
-                              className="vote-dot"
-                              style={{ backgroundColor: color }}
-                            />
+                          {voteColors.map((color, idx) => (
+                            <span key={idx} className="vote-dot" style={{ backgroundColor: color }} />
                           ))}
-                          <span className="vote-count">{votes.length}</span>
                         </div>
                       )}
                     </div>
                   </div>
-                  {isSelected && (
-                    <div className="selected-badge">✓</div>
-                  )}
-                </button>
-              );
-            })}
+                </div>
+                {isSelected && <div className="selected-badge">✓</div>}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="vote-status">
+          {selectedTarget && (
+            <div className="your-vote">
+              Your Vote: <strong>{game.players[selectedTarget]?.name}</strong>
+            </div>
+          )}
+          
+          <div className="confirmed-status">
+            Confirmed: {votedCount}/{aliveCount}
+            {waitingCount > 0 && waitingCount <= 3 && submitted && (
+              <span className="waiting-flash"> ⚡ Waiting for {waitingCount}...</span>
+            )}
           </div>
         </div>
 
@@ -112,7 +125,7 @@ function DayPhase({ game, player }) {
           </button>
         ) : (
           <div className="submitted-message">
-            ✓ Vote submitted. Waiting for other players...
+            ✓ Vote submitted. Waiting for others...
           </div>
         )}
       </div>
@@ -121,4 +134,3 @@ function DayPhase({ game, player }) {
 }
 
 export default DayPhase;
-

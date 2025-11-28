@@ -1,0 +1,132 @@
+.dead-view-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+}
+
+.dead-view-content {
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.phase-info {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: #374151;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #9CA3AF;
+  margin-bottom: 2rem;
+}
+
+.death-banner {
+  margin-bottom: 2rem;
+}
+
+.coffin-icon {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+  opacity: 0.8;
+}
+
+.death-banner h1 {
+  font-size: 2rem;
+  color: #9CA3AF;
+  margin-bottom: 0.5rem;
+}
+
+.death-banner p {
+  color: #6B7280;
+}
+
+.spectator-info {
+  background: #374151;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.spectator-info p {
+  color: #D1D5DB;
+  line-height: 1.6;
+}
+
+.watch-text {
+  font-weight: 600;
+  color: #8B5CF6 !important;
+  margin-top: 1rem !important;
+}
+
+.game-status {
+  background: #374151;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.game-status h3 {
+  color: #D1D5DB;
+  margin-bottom: 1rem;
+}
+
+.game-status ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: #9CA3AF;
+}
+
+.game-status li {
+  padding: 0.5rem 0;
+}
+
+.alive-list {
+  background: #374151;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.alive-list h3 {
+  color: #D1D5DB;
+  margin-bottom: 1rem;
+}
+
+.players-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.player-tag {
+  padding: 0.5rem 1rem;
+  background: #1F2937;
+  border-left: 3px solid;
+  border-radius: 4px;
+  color: #F9FAFB;
+  font-size: 0.9rem;
+}
+
+.btn-leave {
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  color: #9CA3AF;
+  border: 2px solid #374151;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.btn-leave:hover {
+  border-color: #6B7280;
+  color: #D1D5DB;
+}
+

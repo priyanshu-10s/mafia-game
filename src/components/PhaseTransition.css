@@ -1,0 +1,69 @@
+.phase-transition {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.5s ease-out, fadeOut 0.5s ease-in 1.5s forwards;
+}
+
+.phase-transition.night {
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+}
+
+.phase-transition.day {
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+}
+
+.phase-transition.day .phase-text,
+.phase-transition.day .phase-subtext {
+  color: #1F2937;
+}
+
+.phase-transition-content {
+  text-align: center;
+  animation: scaleIn 0.5s ease-out;
+}
+
+.phase-icon {
+  font-size: 6rem;
+  margin-bottom: 1rem;
+  animation: float 2s ease-in-out infinite;
+}
+
+.phase-text {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #F9FAFB;
+  margin-bottom: 0.5rem;
+}
+
+.phase-subtext {
+  font-size: 1.2rem;
+  color: #9CA3AF;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+

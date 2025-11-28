@@ -26,13 +26,18 @@ export async function processGamePhase() {
 
   if (game.phase === 'night') {
     const allActed = shouldEndPhaseEarly(game, 'night');
+    const timerExpired = game.nightEndTime && Date.now() > game.nightEndTime;
     
-    if (allActed || (game.nightEndTime && Date.now() > game.nightEndTime)) {
+    if (allActed || timerExpired) {
       const { killedId } = processNightPhase(game);
       const players = { ...game.players };
       
       if (killedId && players[killedId]) {
-        players[killedId] = { ...players[killedId], isAlive: false };
+        players[killedId] = { 
+          ...players[killedId], 
+          isAlive: false,
+          eliminatedRound: game.round
+        };
       }
 
       const winner = checkWinCondition({ ...game, players });
@@ -42,28 +47,39 @@ export async function processGamePhase() {
           status: 'ended',
           winner,
           players,
-          phase: 'ended'
+          phase: 'ended',
+          lastKilledId: killedId
         });
         return;
       }
+
+      const dayEndTime = Date.now() + ((game.settings?.dayTimer || 5) * 60 * 1000);
 
       await updateDoc(gameRef, {
         phase: 'day',
         players,
+        lastActions: game.actions,
         actions: {},
         votes: {},
-        dayStartTime: Date.now()
+        dayStartTime: Date.now(),
+        dayEndTime,
+        lastKilledId: killedId
       });
     }
   } else if (game.phase === 'day') {
     const allVoted = shouldEndPhaseEarly(game, 'day');
+    const timerExpired = game.dayEndTime && Date.now() > game.dayEndTime;
     
-    if (allVoted || (game.dayEndTime && Date.now() > game.dayEndTime)) {
+    if (allVoted || timerExpired) {
       const eliminatedId = processDayPhase(game);
       const players = { ...game.players };
       
       if (eliminatedId && players[eliminatedId]) {
-        players[eliminatedId] = { ...players[eliminatedId], isAlive: false };
+        players[eliminatedId] = { 
+          ...players[eliminatedId], 
+          isAlive: false,
+          eliminatedRound: game.round
+        };
       }
 
       const winner = checkWinCondition({ ...game, players });
@@ -73,34 +89,25 @@ export async function processGamePhase() {
           status: 'ended',
           winner,
           players,
-          phase: 'ended'
+          phase: 'ended',
+          lastEliminatedId: eliminatedId
         });
         return;
       }
+
+      const nightEndTime = Date.now() + ((game.settings?.nightTimer || 1) * 60 * 1000);
 
       await updateDoc(gameRef, {
         phase: 'night',
         round: (game.round || 1) + 1,
         players,
         actions: {},
+        lastVotes: game.votes,
         votes: {},
-        nightStartTime: Date.now()
+        nightStartTime: Date.now(),
+        nightEndTime,
+        lastEliminatedId: eliminatedId
       });
     }
   }
 }
-
-export function startPhaseTimer(game) {
-  if (game.phase === 'night' && game.settings?.nightTimer) {
-    const nightEndTime = Date.now() + (game.settings.nightTimer * 60 * 1000);
-    return { nightEndTime };
-  }
-  
-  if (game.phase === 'day' && game.settings?.dayTimer) {
-    const dayEndTime = Date.now() + (game.settings.dayTimer * 60 * 1000);
-    return { dayEndTime };
-  }
-  
-  return {};
-}
-

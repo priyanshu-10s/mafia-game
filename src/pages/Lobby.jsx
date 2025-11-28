@@ -98,9 +98,14 @@ function Lobby() {
                   <div className="player-name">
                     {p.name}
                     {p.uid === game.hostId && <span className="host-badge">Host</span>}
+                    {p.uid === user.uid && <span className="you-badge">You</span>}
                   </div>
                   <div className="player-status">
-                    {p.ready ? '✓ Ready' : 'Waiting...'}
+                    {p.connectionStatus === 'disconnected' ? (
+                      <span className="status-disconnected">⚠️ Disconnected</span>
+                    ) : (
+                      <span className="status-online">✓ Online</span>
+                    )}
                   </div>
                 </div>
               </div>

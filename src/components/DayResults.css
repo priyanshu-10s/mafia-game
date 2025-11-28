@@ -1,0 +1,145 @@
+.day-results-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+}
+
+.day-results-content {
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.phase-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: #374151;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #F9FAFB;
+  margin-bottom: 1.5rem;
+}
+
+.results-title {
+  font-size: 2rem;
+  color: #F9FAFB;
+  margin-bottom: 2rem;
+}
+
+.elimination-announcement {
+  background: #374151;
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+.eliminated-name {
+  font-size: 1.5rem;
+  color: #F9FAFB;
+  margin-bottom: 0.5rem;
+}
+
+.vote-total {
+  color: #9CA3AF;
+  margin-bottom: 1rem;
+}
+
+.role-reveal {
+  padding: 1rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.role-reveal.mafia {
+  background: rgba(239, 68, 68, 0.2);
+  color: #EF4444;
+}
+
+.role-reveal.villager {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3B82F6;
+}
+
+.no-elimination {
+  font-size: 1.5rem;
+  color: #F59E0B;
+}
+
+.vote-breakdown {
+  background: #374151;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.vote-breakdown h3 {
+  color: #D1D5DB;
+  margin-bottom: 1rem;
+}
+
+.vote-breakdown ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.vote-breakdown li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #4B5563;
+}
+
+.vote-breakdown li:last-child {
+  border-bottom: none;
+}
+
+.vote-breakdown li.eliminated {
+  background: rgba(239, 68, 68, 0.1);
+  margin: 0 -1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+}
+
+.vote-player {
+  padding: 0.25rem 0.75rem;
+  background: #1F2937;
+  border-left: 3px solid;
+  border-radius: 4px;
+  color: #F9FAFB;
+  font-weight: 500;
+}
+
+.vote-count {
+  color: #9CA3AF;
+}
+
+.remaining-info {
+  color: #9CA3AF;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+}
+
+.btn-continue {
+  width: 100%;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #8B5CF6, #EC4899);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-continue:hover {
+  transform: translateY(-2px);
+}
+

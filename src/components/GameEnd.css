@@ -13,10 +13,16 @@
   text-align: center;
 }
 
+.game-over-title {
+  font-size: 2.5rem;
+  color: #F9FAFB;
+  margin-bottom: 1.5rem;
+}
+
 .winner-banner {
-  padding: 3rem 2rem;
+  padding: 2rem;
   border-radius: 16px;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .winner-banner.winner {
@@ -27,37 +33,134 @@
   background: linear-gradient(135deg, #EF4444, #DC2626);
 }
 
-.winner-banner h1 {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
+.winner-banner h2 {
+  font-size: 1.75rem;
   color: white;
+  margin-bottom: 0.5rem;
 }
 
-.winner-banner h2 {
-  font-size: 1.5rem;
-  color: white;
-  opacity: 0.9;
+.winner-banner p {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.your-result {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.your-result.victory {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10B981;
+  border: 2px solid #10B981;
+}
+
+.your-result.defeat {
+  background: rgba(239, 68, 68, 0.2);
+  color: #EF4444;
+  border: 2px solid #EF4444;
 }
 
 .your-role {
-  margin-bottom: 2rem;
+  opacity: 0.8;
 }
 
-.your-role p {
-  color: #9CA3AF;
+.final-roles {
+  background: #374151;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.final-roles h3 {
+  color: #F9FAFB;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.role-section {
   margin-bottom: 1rem;
 }
 
-.role-badge {
-  display: inline-block;
-  padding: 1rem 2rem;
-  border-radius: 12px;
-  color: white;
-  font-weight: 700;
-  font-size: 1.2rem;
+.role-section:last-child {
+  margin-bottom: 0;
 }
 
-.btn-leave {
+.role-header {
+  font-weight: 700;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.role-header.mafia {
+  background: rgba(239, 68, 68, 0.2);
+  color: #EF4444;
+}
+
+.role-header.detective {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3B82F6;
+}
+
+.role-header.doctor {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10B981;
+}
+
+.role-header.villager {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9CA3AF;
+}
+
+.player-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-left: 0.5rem;
+}
+
+.player-entry.eliminated {
+  opacity: 0.6;
+}
+
+.player-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.player-name {
+  color: #F9FAFB;
+}
+
+.you-tag {
+  background: #8B5CF6;
+  color: white;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.eliminated-tag {
+  color: #6B7280;
+  font-size: 0.8rem;
+}
+
+.game-stats {
+  color: #6B7280;
+  margin-bottom: 1.5rem;
+}
+
+.btn-play-again {
   width: 100%;
   padding: 1rem 2rem;
   font-size: 1.1rem;
@@ -67,10 +170,27 @@
   border: none;
   border-radius: 12px;
   cursor: pointer;
+  margin-bottom: 1rem;
   transition: transform 0.2s;
 }
 
-.btn-leave:hover {
+.btn-play-again:hover {
   transform: translateY(-2px);
 }
 
+.btn-leave {
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  color: #9CA3AF;
+  border: 2px solid #374151;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.btn-leave:hover {
+  border-color: #6B7280;
+  color: #D1D5DB;
+}

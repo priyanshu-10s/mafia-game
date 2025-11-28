@@ -100,3 +100,98 @@
   color: #D1D5DB;
 }
 
+.divider {
+  height: 1px;
+  background: #4B5563;
+  margin: 1.5rem 0;
+}
+
+.game-status {
+  background: #1F2937;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #374151;
+}
+
+.status-row:last-child {
+  border-bottom: none;
+}
+
+.status-label {
+  color: #9CA3AF;
+}
+
+.status-value {
+  color: #F9FAFB;
+  font-weight: 600;
+}
+
+.no-game {
+  color: #6B7280;
+  text-align: center;
+  padding: 1rem;
+}
+
+.btn-view-players {
+  width: 100%;
+  padding: 0.75rem;
+  background: #374151;
+  color: #F9FAFB;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-view-players:hover {
+  background: #4B5563;
+}
+
+.players-list {
+  margin-top: 1rem;
+  background: #1F2937;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid;
+  border-bottom: 1px solid #374151;
+}
+
+.player-row:last-child {
+  border-bottom: none;
+}
+
+.player-name {
+  color: #F9FAFB;
+  font-weight: 600;
+}
+
+.player-email {
+  color: #6B7280;
+  font-size: 0.875rem;
+  flex: 1;
+}
+
+.host-badge {
+  background: #8B5CF6;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+

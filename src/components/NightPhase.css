@@ -1,6 +1,6 @@
 .night-phase-container {
   min-height: 100vh;
-  padding: 2rem 1rem;
+  padding: 1rem;
   background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
 }
 
@@ -9,17 +9,38 @@
   margin: 0 auto;
 }
 
-.phase-title {
-  text-align: center;
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
+.phase-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 0.5rem;
+}
+
+.phase-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.round-badge {
+  background: #374151;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #9CA3AF;
+}
+
+.phase-name {
+  font-weight: 700;
   color: #F9FAFB;
 }
 
-.phase-subtitle {
+.phase-title {
   text-align: center;
-  color: #9CA3AF;
-  margin-bottom: 2rem;
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  color: #F9FAFB;
 }
 
 .role-toggle {
@@ -40,7 +61,6 @@
 
 .btn-toggle:hover {
   background: #4B5563;
-  border-color: #6B7280;
 }
 
 .btn-toggle.active {
@@ -51,14 +71,14 @@
 .role-info-card {
   background: #374151;
   border-radius: 12px;
-  padding: 2rem;
+  padding: 1.5rem;
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   border: 2px solid #4B5563;
 }
 
 .role-emoji {
-  font-size: 4rem;
+  font-size: 3rem;
   margin-bottom: 0.5rem;
 }
 
@@ -66,26 +86,47 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: #F9FAFB;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .role-action {
   color: #9CA3AF;
-  font-size: 1rem;
+}
+
+.mafia-team {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #4B5563;
+}
+
+.mafia-team p {
+  color: #9CA3AF;
+  margin-bottom: 0.5rem;
+}
+
+.mafia-member {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: #1F2937;
+  border-left: 3px solid;
+  border-radius: 4px;
+  margin: 0.25rem;
+  color: #F9FAFB;
+  font-weight: 600;
 }
 
 .selection-title {
   text-align: center;
   color: #D1D5DB;
-  margin-bottom: 1.5rem;
-  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
 }
 
 .players-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .player-card {
@@ -108,7 +149,7 @@
 }
 
 .player-card:disabled {
-  opacity: 0.6;
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
@@ -118,8 +159,8 @@
 }
 
 .player-avatar {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   border: 2px solid #6B7280;
 }
@@ -129,6 +170,19 @@
   color: #F9FAFB;
   font-size: 0.9rem;
   text-align: center;
+}
+
+.vote-indicators {
+  display: flex;
+  gap: 4px;
+  margin-top: 0.5rem;
+}
+
+.vote-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid #1F2937;
 }
 
 .selected-indicator {
@@ -145,6 +199,66 @@
   justify-content: center;
   font-weight: bold;
   font-size: 0.875rem;
+}
+
+.vote-status {
+  margin-bottom: 1rem;
+}
+
+.your-vote {
+  text-align: center;
+  color: #D1D5DB;
+  margin-bottom: 0.5rem;
+}
+
+.mafia-votes {
+  background: #374151;
+  border-radius: 8px;
+  padding: 1rem;
+  border-left: 3px solid #EF4444;
+}
+
+.mafia-vote-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  color: #D1D5DB;
+  font-size: 0.9rem;
+}
+
+.partner-vote {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #374151;
+  border-radius: 8px;
+  color: #D1D5DB;
+  font-size: 0.9rem;
+}
+
+.vote-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.vote-arrow {
+  color: #6B7280;
+}
+
+.action-area {
+  text-align: center;
+}
+
+.waiting-status {
+  color: #F59E0B;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 8px;
 }
 
 .btn-submit {
@@ -170,7 +284,6 @@
 }
 
 .submitted-message {
-  text-align: center;
   padding: 1rem;
   background: #10B981;
   color: white;
@@ -179,6 +292,11 @@
 }
 
 @media (max-width: 640px) {
+  .phase-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
   .players-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 0.75rem;
@@ -189,8 +307,7 @@
   }
   
   .player-avatar {
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
   }
 }
-

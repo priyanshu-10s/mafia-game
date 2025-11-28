@@ -6,15 +6,19 @@ import './GameSettings.css';
 function GameSettings({ game }) {
   const { user } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
+  const [showProbability, setShowProbability] = useState(false);
   const [settings, setSettings] = useState(game.settings || {
     numMafia: 2,
     hasDetective: true,
     hasDoctor: true,
     dayTimer: 5,
     nightTimer: 1,
-    revealOnDeath: false
+    revealOnDeath: false,
+    mafiaProbability: {}
   });
 
+  const players = Object.values(game.players || {});
+  
   const handleSave = async () => {
     try {
       await gameService.updateSettings(user.uid, settings);
@@ -22,6 +26,27 @@ function GameSettings({ game }) {
     } catch (error) {
       alert(error.message || 'Failed to update settings');
     }
+  };
+
+  const handleProbabilityChange = (uid, value) => {
+    setSettings({
+      ...settings,
+      mafiaProbability: {
+        ...settings.mafiaProbability,
+        [uid]: value
+      }
+    });
+  };
+
+  const resetAllProbabilities = () => {
+    const probabilities = {};
+    players.forEach(p => {
+      probabilities[p.uid] = 50;
+    });
+    setSettings({
+      ...settings,
+      mafiaProbability: probabilities
+    });
   };
 
   return (
@@ -33,7 +58,7 @@ function GameSettings({ game }) {
         ⚙️ Game Settings
       </button>
 
-      {showSettings && (
+      {showSettings && !showProbability && (
         <div className="modal-overlay" onClick={() => setShowSettings(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2>⚙️ Game Settings</h2>
@@ -114,6 +139,13 @@ function GameSettings({ game }) {
                 />
                 Reveal role when player dies
               </label>
+
+              <button 
+                className="btn-probability"
+                onClick={() => setShowProbability(true)}
+              >
+                🎲 Mafia Probability Per Player →
+              </button>
             </div>
 
             <div className="settings-actions">
@@ -127,9 +159,63 @@ function GameSettings({ game }) {
           </div>
         </div>
       )}
+
+      {showSettings && showProbability && (
+        <div className="modal-overlay" onClick={() => { setShowProbability(false); setShowSettings(false); }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>🎲 Mafia Probability</h2>
+            
+            <p className="probability-desc">
+              Set the chance for each player to become Mafia
+            </p>
+
+            <div className="probability-list">
+              {players.map(player => {
+                const prob = settings.mafiaProbability?.[player.uid] ?? 50;
+                return (
+                  <div key={player.uid} className="probability-item">
+                    <div className="player-info" style={{ borderLeftColor: player.color }}>
+                      {player.photoURL && (
+                        <img src={player.photoURL} alt={player.name} className="player-avatar" />
+                      )}
+                      <span className="player-name">{player.name}</span>
+                    </div>
+                    <div className="slider-container">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={prob}
+                        onChange={(e) => handleProbabilityChange(player.uid, parseInt(e.target.value))}
+                        style={{ 
+                          '--progress': `${prob}%`,
+                          '--player-color': player.color 
+                        }}
+                      />
+                      <span className="prob-value">{prob}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button className="btn-reset" onClick={resetAllProbabilities}>
+              Reset All to 50%
+            </button>
+
+            <div className="settings-actions">
+              <button className="btn-secondary" onClick={() => setShowProbability(false)}>
+                ← Back
+              </button>
+              <button className="btn-primary" onClick={handleSave}>
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
 export default GameSettings;
-

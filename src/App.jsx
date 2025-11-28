@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Lobby from './pages/Lobby';
 import Game from './pages/Game';
 import Admin from './pages/Admin';
+import Restart from './pages/Restart';
 import DummyUserPanel from '../test-utils/DummyUserPanel';
 import './App.css';
 
@@ -19,6 +20,7 @@ function App() {
               <Route path="/lobby" element={<Lobby />} />
               <Route path="/game" element={<Game />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/restart" element={<Restart />} />
               <Route path="/test" element={<DummyUserPanel />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

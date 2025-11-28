@@ -147,30 +147,67 @@ export const gameService = {
   assignRoles(players, settings) {
     const numPlayers = players.length;
     const numMafia = Math.min(settings.numMafia || 2, Math.floor(numPlayers / 3));
-    const roles = [];
-
+    const mafiaProbability = settings.mafiaProbability || {};
+    
+    const playersCopy = [...players];
+    const assignedRoles = new Array(numPlayers).fill(null);
+    
+    const playerWeights = playersCopy.map((p, idx) => ({
+      index: idx,
+      weight: mafiaProbability[p.uid] ?? 50
+    }));
+    
+    playerWeights.sort((a, b) => b.weight - a.weight);
+    
+    const mafiaIndices = [];
     for (let i = 0; i < numMafia; i++) {
-      roles.push('mafia');
+      const eligiblePlayers = playerWeights.filter(
+        pw => !mafiaIndices.includes(pw.index)
+      );
+      
+      if (eligiblePlayers.length === 0) break;
+      
+      const totalWeight = eligiblePlayers.reduce((sum, pw) => sum + pw.weight, 0);
+      let random = Math.random() * totalWeight;
+      
+      for (const pw of eligiblePlayers) {
+        random -= pw.weight;
+        if (random <= 0) {
+          mafiaIndices.push(pw.index);
+          assignedRoles[pw.index] = 'mafia';
+          break;
+        }
+      }
     }
-
-    if (settings.hasDetective) {
-      roles.push('detective');
-    }
-
-    if (settings.hasDoctor) {
-      roles.push('doctor');
-    }
-
-    while (roles.length < numPlayers) {
-      roles.push('villager');
-    }
-
-    for (let i = roles.length - 1; i > 0; i--) {
+    
+    const remainingIndices = playersCopy
+      .map((_, idx) => idx)
+      .filter(idx => !mafiaIndices.includes(idx));
+    
+    for (let i = remainingIndices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [roles[i], roles[j]] = [roles[j], roles[i]];
+      [remainingIndices[i], remainingIndices[j]] = [remainingIndices[j], remainingIndices[i]];
     }
-
-    return roles;
+    
+    let specialRoleIdx = 0;
+    
+    if (settings.hasDetective && specialRoleIdx < remainingIndices.length) {
+      assignedRoles[remainingIndices[specialRoleIdx]] = 'detective';
+      specialRoleIdx++;
+    }
+    
+    if (settings.hasDoctor && specialRoleIdx < remainingIndices.length) {
+      assignedRoles[remainingIndices[specialRoleIdx]] = 'doctor';
+      specialRoleIdx++;
+    }
+    
+    for (let i = 0; i < numPlayers; i++) {
+      if (assignedRoles[i] === null) {
+        assignedRoles[i] = 'villager';
+      }
+    }
+    
+    return assignedRoles;
   },
 
   async submitAction(userId, actionType, targetId) {
@@ -232,6 +269,35 @@ export const gameService = {
         processGamePhase();
       });
     }, 1000);
+  },
+
+  async resetGame(hostId) {
+    const gameRef = doc(db, 'games', GAME_ID);
+    const gameSnap = await getDoc(gameRef);
+
+    if (!gameSnap.exists()) {
+      throw new Error('No game to reset');
+    }
+
+    if (gameSnap.data().hostId !== hostId) {
+      throw new Error('Only host can reset game');
+    }
+
+    await setDoc(gameRef, {
+      status: 'lobby',
+      hostId: hostId,
+      players: {},
+      settings: gameSnap.data().settings || {
+        numMafia: 2,
+        hasDetective: true,
+        hasDoctor: true,
+        dayTimer: 5,
+        nightTimer: 1,
+        revealOnDeath: false,
+        mafiaProbability: {}
+      },
+      createdAt: serverTimestamp()
+    });
   }
 };
 

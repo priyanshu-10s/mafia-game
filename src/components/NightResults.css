@@ -1,0 +1,156 @@
+.night-results-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+}
+
+.night-results-content {
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.phase-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: #374151;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #F9FAFB;
+  margin-bottom: 1.5rem;
+}
+
+.results-title {
+  font-size: 2rem;
+  color: #FDE68A;
+  margin-bottom: 2rem;
+}
+
+.death-announcement {
+  background: #374151;
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+.coffin-icon, .safe-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.killed-name {
+  font-size: 1.5rem;
+  color: #EF4444;
+  margin-bottom: 0.5rem;
+}
+
+.killed-role {
+  color: #9CA3AF;
+}
+
+.safe-text {
+  font-size: 1.5rem;
+  color: #10B981;
+  margin-bottom: 0.5rem;
+}
+
+.safe-subtext {
+  color: #9CA3AF;
+}
+
+.players-status {
+  background: #374151;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.players-status h3 {
+  color: #D1D5DB;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.alive-players, .dead-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.player-tag {
+  padding: 0.5rem 1rem;
+  background: #1F2937;
+  border-left: 3px solid;
+  border-radius: 4px;
+  color: #F9FAFB;
+  font-size: 0.9rem;
+}
+
+.player-tag.dead {
+  border-color: #6B7280;
+  color: #6B7280;
+  text-decoration: line-through;
+}
+
+.divider {
+  height: 1px;
+  background: #4B5563;
+  margin: 1rem 0;
+}
+
+.btn-continue {
+  width: 100%;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #8B5CF6, #EC4899);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-continue:hover {
+  transform: translateY(-2px);
+}
+
+.investigation-result {
+  background: linear-gradient(135deg, #1E3A8A, #3730A3);
+  padding: 1.5rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  text-align: center;
+  border: 2px solid #3B82F6;
+}
+
+.investigation-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.investigation-result h3 {
+  color: #93C5FD;
+  margin-bottom: 0.5rem;
+}
+
+.investigation-result p {
+  color: #F9FAFB;
+  font-size: 1.1rem;
+}
+
+.mafia-result {
+  color: #EF4444;
+  font-weight: 700;
+}
+
+.innocent-result {
+  color: #10B981;
+  font-weight: 600;
+}
+
