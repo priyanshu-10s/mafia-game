@@ -10,8 +10,11 @@ function NightResults({ game, killedPlayer, onContinue }) {
 
   useEffect(() => {
     if (!soundPlayed.current) {
+      // Play day transition sound
+      sounds.day();
+      // Also play death sound if someone was killed
       if (killedPlayer) {
-        sounds.death();
+        setTimeout(() => sounds.death(), 500);
       }
       soundPlayed.current = true;
     }

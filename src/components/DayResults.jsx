@@ -1,8 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import sounds from '../utils/sounds';
 import './DayResults.css';
 
 function DayResults({ game, eliminatedPlayer, voteBreakdown, onContinue }) {
   const [show, setShow] = useState(true);
+  const soundPlayed = useRef(false);
+
+  useEffect(() => {
+    if (!soundPlayed.current) {
+      // Play night transition sound
+      sounds.night();
+      // Also play death sound if someone was eliminated
+      if (eliminatedPlayer) {
+        setTimeout(() => sounds.death(), 500);
+      }
+      soundPlayed.current = true;
+    }
+  }, [eliminatedPlayer]);
 
   const handleContinue = () => {
     setShow(false);
