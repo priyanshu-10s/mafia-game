@@ -34,11 +34,24 @@ export function processDayPhase(game) {
     }
   });
 
-  const eliminatedId = Object.keys(voteCounts).length > 0
-    ? Object.keys(voteCounts).reduce((a, b) => voteCounts[a] > voteCounts[b] ? a : b)
-    : null;
+  if (Object.keys(voteCounts).length === 0) {
+    return null;
+  }
 
-  return eliminatedId;
+  // Find the maximum vote count
+  const maxVotes = Math.max(...Object.values(voteCounts));
+  
+  // Find all players with the max votes
+  const playersWithMaxVotes = Object.keys(voteCounts).filter(
+    id => voteCounts[id] === maxVotes
+  );
+  
+  // If there's a tie (more than one player with max votes), no one is eliminated
+  if (playersWithMaxVotes.length > 1) {
+    return null;
+  }
+
+  return playersWithMaxVotes[0];
 }
 
 export function checkWinCondition(game) {
