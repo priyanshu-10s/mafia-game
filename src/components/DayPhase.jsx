@@ -21,14 +21,19 @@ function DayPhase({ game, player }) {
     const myVote = votes[user.uid];
     if (myVote) {
       setSelectedTarget(myVote.targetId);
+    } else {
+      setSelectedTarget(null);  // Reset when vote is removed
     }
   }, [votes, user.uid]);
 
   const submitVote = useCallback(async (targetId) => {
     try {
+      console.log('Submitting vote:', targetId);
       await gameService.submitVote(user.uid, targetId);
+      console.log('Vote saved successfully:', targetId);
     } catch (error) {
       console.error('Vote error:', error);
+      alert('Failed to save vote: ' + error.message);
     }
   }, [user.uid]);
 
@@ -109,22 +114,24 @@ function DayPhase({ game, player }) {
           })}
         </div>
 
-        <button 
-          className={`btn-no-vote ${selectedTarget === 'skip' ? 'selected' : ''}`}
-          onClick={handleNoVote}
-        >
-          🚫 No Vote
-        </button>
+        {selectedTarget && (
+          <button 
+            className="btn-no-vote"
+            onClick={handleNoVote}
+          >
+            🚫 Undo Vote
+          </button>
+        )}
 
         <div className="vote-status">
-          {selectedTarget && selectedTarget !== 'skip' && (
+          {selectedTarget && (
             <div className="your-vote">
               Your Vote: <strong>{game.players[selectedTarget]?.name}</strong>
             </div>
           )}
-          {selectedTarget === 'skip' && (
-            <div className="your-vote">
-              Your Vote: <strong>No Vote</strong>
+          {!selectedTarget && (
+            <div className="your-vote not-voted">
+              You haven't voted yet
             </div>
           )}
           

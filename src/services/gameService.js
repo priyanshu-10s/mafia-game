@@ -226,11 +226,17 @@ export const gameService = {
     }
 
     const actions = { ...(gameData.actions || {}) };
-    actions[userId] = {
-      type: actionType,
-      targetId: targetId,
-      timestamp: serverTimestamp()
-    };
+    
+    // 'skip' means remove action (undo)
+    if (targetId === 'skip') {
+      delete actions[userId];
+    } else {
+      actions[userId] = {
+        type: actionType,
+        targetId: targetId,
+        timestamp: serverTimestamp()
+      };
+    }
 
     await updateDoc(gameRef, { actions });
     
@@ -257,10 +263,16 @@ export const gameService = {
     }
 
     const votes = { ...(gameData.votes || {}) };
-    votes[userId] = {
-      targetId: targetId,
-      timestamp: serverTimestamp()
-    };
+    
+    // 'skip' means remove vote (undo)
+    if (targetId === 'skip') {
+      delete votes[userId];
+    } else {
+      votes[userId] = {
+        targetId: targetId,
+        timestamp: serverTimestamp()
+      };
+    }
 
     await updateDoc(gameRef, { votes });
     

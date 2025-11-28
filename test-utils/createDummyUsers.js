@@ -143,11 +143,13 @@ export async function dummyUsersVote() {
       const targets = alivePlayers.filter(p => p.uid !== uid);
       const randomTarget = targets[Math.floor(Math.random() * targets.length)];
       
-      actions[uid] = {
-        type: player.role || 'villager',
-        targetId: randomTarget?.uid || 'skip',
-        timestamp: new Date()
-      };
+      if (randomTarget) {
+        actions[uid] = {
+          type: player.role || 'villager',
+          targetId: randomTarget.uid,
+          timestamp: new Date()
+        };
+      }
     });
 
     await updateDoc(gameRef, { actions });
@@ -161,10 +163,12 @@ export async function dummyUsersVote() {
       const targets = alivePlayers.filter(p => p.uid !== uid);
       const randomTarget = targets[Math.floor(Math.random() * targets.length)];
       
-      votes[uid] = {
-        targetId: randomTarget?.uid || 'skip',
-        timestamp: new Date()
-      };
+      if (randomTarget) {
+        votes[uid] = {
+          targetId: randomTarget.uid,
+          timestamp: new Date()
+        };
+      }
     });
 
     await updateDoc(gameRef, { votes });

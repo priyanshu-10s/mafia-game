@@ -36,14 +36,19 @@ function NightPhase({ game, player }) {
     const myAction = actions[user.uid];
     if (myAction) {
       setSelectedTarget(myAction.targetId);
+    } else {
+      setSelectedTarget(null);  // Reset when action is removed
     }
   }, [actions, user.uid]);
 
   const submitAction = useCallback(async (targetId) => {
     try {
+      console.log('Submitting action:', targetId);
       await gameService.submitAction(user.uid, player.role, targetId);
+      console.log('Action saved successfully:', targetId);
     } catch (error) {
       console.error('Submit action error:', error);
+      alert('Failed to save action: ' + error.message);
     }
   }, [user.uid, player.role]);
 
@@ -55,19 +60,6 @@ function NightPhase({ game, player }) {
   const handleNoVote = async () => {
     setSelectedTarget('skip');
     await submitAction('skip');
-  };
-
-  const getMafiaVotes = () => {
-    if (!isMafia) return [];
-    return mafiaMembers.map(m => {
-      const action = actions[m.uid];
-      return {
-        player: m,
-        targetId: action?.targetId,
-        targetName: action?.targetId === 'skip' ? 'No Vote' : 
-          (action?.targetId ? game.players[action.targetId]?.name : null)
-      };
-    });
   };
 
   const getRandomPartnerVote = () => {
@@ -111,9 +103,6 @@ function NightPhase({ game, player }) {
       return [];
     }
   };
-
-  const mafiaVotes = getMafiaVotes();
-  const randomPartnerVote = getRandomPartnerVote();
 
   return (
     <div className="night-phase-container">
@@ -187,45 +176,25 @@ function NightPhase({ game, player }) {
             })}
           </div>
 
-          <button 
-            className={`btn-no-vote ${selectedTarget === 'skip' ? 'selected' : ''}`}
-            onClick={handleNoVote}
-          >
-            🚫 No Vote
-          </button>
+          {selectedTarget && (
+            <button 
+              className="btn-no-vote"
+              onClick={handleNoVote}
+            >
+              🚫 Undo Vote
+            </button>
+          )}
         </div>
 
         <div className="vote-status">
-          {selectedTarget && selectedTarget !== 'skip' && (
+          {selectedTarget && (
             <div className="your-vote">
               Your Vote: <strong>{game.players[selectedTarget]?.name}</strong>
             </div>
           )}
-          {selectedTarget === 'skip' && (
-            <div className="your-vote">
-              Your Vote: <strong>No Vote</strong>
-            </div>
-          )}
-          
-          {isMafia && mafiaVotes.length > 0 && (
-            <div className="mafia-votes">
-              {mafiaVotes.map(({ player: m, targetName }) => (
-                <div key={m.uid} className="mafia-vote-item">
-                  <span className="vote-color" style={{ backgroundColor: m.color }} />
-                  <span>{m.name}</span>
-                  <span className="vote-arrow">→</span>
-                  <span>{targetName || "hasn't voted"}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          {!isMafia && randomPartnerVote && (
-            <div className="partner-vote">
-              <span className="vote-color" style={{ backgroundColor: randomPartnerVote.player.color }} />
-              <span>{randomPartnerVote.player.name}</span>
-              <span className="vote-arrow">→</span>
-              <span>{randomPartnerVote.targetName}</span>
+          {!selectedTarget && (
+            <div className="your-vote not-voted">
+              You haven't voted yet
             </div>
           )}
         </div>

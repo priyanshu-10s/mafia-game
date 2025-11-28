@@ -132,9 +132,9 @@
 .btn-no-vote {
   width: 100%;
   padding: 0.75rem 1.5rem;
-  background: #374151;
-  color: #9CA3AF;
-  border: 2px dashed #4B5563;
+  background: #EF4444;
+  color: white;
+  border: none;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
@@ -144,17 +144,12 @@
 }
 
 .btn-no-vote:hover {
-  background: #4B5563;
-  border-color: #6B7280;
-  color: #F9FAFB;
+  background: #DC2626;
 }
 
-.btn-no-vote.selected {
-  background: #1F2937;
-  border-style: solid;
-  border-color: #8B5CF6;
-  color: #F9FAFB;
-  box-shadow: 0 0 0 2px #8B5CF6;
+.your-vote.not-voted {
+  color: #6B7280;
+  font-style: italic;
 }
 
 .player-card {
