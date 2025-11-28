@@ -18,10 +18,19 @@ function Lobby() {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (game?.status === 'night' || game?.status === 'day') {
+    if (game?.status === 'playing') {
       navigate('/game');
     }
   }, [game, navigate]);
+
+  useEffect(() => {
+    if (!loading && (!game || !player)) {
+      const timer = setTimeout(() => {
+        navigate('/');
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, game, player, navigate]);
 
   const handleStartGame = async () => {
     try {
@@ -66,7 +75,9 @@ function Lobby() {
   if (!game || !player) {
     return (
       <div className="lobby-container">
-        <p>No game found. Redirecting...</p>
+        <div className="loading-state">
+          <p>No game found. Redirecting...</p>
+        </div>
       </div>
     );
   }
@@ -149,4 +160,3 @@ function Lobby() {
 }
 
 export default Lobby;
-

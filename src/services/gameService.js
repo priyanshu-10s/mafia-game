@@ -133,7 +133,7 @@ export const gameService = {
     const nightEndTime = Date.now() + ((gameData.settings?.nightTimer || 1) * 60 * 1000);
 
     await updateDoc(gameRef, {
-      status: 'night',
+      status: 'playing',
       phase: 'night',
       round: 1,
       players: playersWithRoles,

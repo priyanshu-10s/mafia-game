@@ -39,6 +39,15 @@ function Game() {
   }, [game, navigate]);
 
   useEffect(() => {
+    if (!loading && (!game || !player)) {
+      const timer = setTimeout(() => {
+        navigate('/');
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, game, player, navigate]);
+
+  useEffect(() => {
     if (!game) return;
     
     if (lastPhase === 'night' && game.phase === 'day') {

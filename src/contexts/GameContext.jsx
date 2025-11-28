@@ -24,8 +24,16 @@ export function GameProvider({ children }) {
       return;
     }
 
+    if (!db) {
+      console.warn('Firebase not initialized');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    
     const gameRef = doc(db, 'games', GAME_ID);
-    const unsubscribe = onSnapshot(gameRef, async (snapshot) => {
+    const unsubscribe = onSnapshot(gameRef, (snapshot) => {
       if (!snapshot.exists()) {
         setGame(null);
         setPlayer(null);
@@ -42,6 +50,9 @@ export function GameProvider({ children }) {
         setPlayer(null);
       }
 
+      setLoading(false);
+    }, (error) => {
+      console.error('Game subscription error:', error);
       setLoading(false);
     });
 
