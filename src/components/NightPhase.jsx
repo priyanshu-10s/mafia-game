@@ -65,25 +65,29 @@ function NightPhase({ game, player }) {
   const getRandomPartnerVote = () => {
     if (isMafia) return null;
     
-    const otherAlivePlayers = Object.values(game.players || {}).filter(
-      p => p.isAlive && p.uid !== user.uid
-    );
+    // Only show fake partner votes if there are 2+ mafia (to match mafia experience)
+    const numMafia = game.settings?.numMafia || 2;
+    if (numMafia < 2) return null;
     
-    if (otherAlivePlayers.length === 0) return null;
+    // Get all other players who have voted
+    const votedPlayers = Object.entries(actions)
+      .filter(([uid, action]) => {
+        const p = game.players[uid];
+        return p && p.isAlive && uid !== user.uid && action.targetId;
+      })
+      .map(([uid, action]) => ({
+        player: game.players[uid],
+        targetId: action.targetId,
+        targetName: game.players[action.targetId]?.name
+      }));
     
+    if (votedPlayers.length === 0) return null;
+    
+    // Pick one randomly (but consistently for this user/round)
     const seedIndex = (game.round || 1) + user.uid.charCodeAt(0);
-    const randomIndex = seedIndex % otherAlivePlayers.length;
-    const randomPartner = otherAlivePlayers[randomIndex];
+    const randomIndex = seedIndex % votedPlayers.length;
     
-    const partnerAction = actions[randomPartner?.uid];
-    if (!partnerAction?.targetId) return null;
-    
-    return {
-      player: randomPartner,
-      targetId: partnerAction.targetId,
-      targetName: partnerAction.targetId === 'skip' ? 'No Vote' : 
-        game.players[partnerAction.targetId]?.name
-    };
+    return votedPlayers[randomIndex];
   };
 
   const getVoteIndicators = (playerId) => {
