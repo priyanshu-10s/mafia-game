@@ -7,7 +7,7 @@ function DeadPlayerView({ game, player }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const alivePlayers = Object.values(game.players || {}).filter(p => p.isAlive);
+  const alivePlayers = Object.values(game.players || {}).filter(p => p.isAlive).sort((a, b) => a.name.localeCompare(b.name));
 
   const handleLeave = async () => {
     try {

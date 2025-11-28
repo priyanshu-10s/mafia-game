@@ -13,7 +13,7 @@ function GameEnd({ game, player }) {
   const isWinner = (player.role === 'mafia' && winner === 'mafia') ||
                    (player.role !== 'mafia' && winner === 'villagers');
 
-  const allPlayers = Object.values(game.players || {});
+  const allPlayers = Object.values(game.players || {}).sort((a, b) => a.name.localeCompare(b.name));
   const mafiaPlayers = allPlayers.filter(p => p.role === 'mafia');
   const detectivePlayers = allPlayers.filter(p => p.role === 'detective');
   const doctorPlayers = allPlayers.filter(p => p.role === 'doctor');

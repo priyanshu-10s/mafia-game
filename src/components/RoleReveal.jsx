@@ -31,7 +31,7 @@ function RoleReveal({ game, player, onContinue }) {
   
   const isMafia = role === 'mafia';
   const mafiaTeam = isMafia 
-    ? Object.values(game.players || {}).filter(p => p.role === 'mafia' && p.uid !== player.uid)
+    ? Object.values(game.players || {}).filter(p => p.role === 'mafia' && p.uid !== player.uid).sort((a, b) => a.name.localeCompare(b.name))
     : [];
 
   useEffect(() => {

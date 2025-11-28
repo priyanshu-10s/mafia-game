@@ -78,7 +78,7 @@ function Admin() {
     }
   };
 
-  const players = game?.players ? Object.values(game.players) : [];
+  const players = game?.players ? Object.values(game.players).sort((a, b) => a.name.localeCompare(b.name)) : [];
   const hostPlayer = players.find(p => p.uid === game?.hostId);
 
   const getStatusText = (status) => {

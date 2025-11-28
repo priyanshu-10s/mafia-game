@@ -6,8 +6,8 @@ function NightResults({ game, killedPlayer, onContinue }) {
   const { user } = useAuth();
   const [show, setShow] = useState(true);
   
-  const alivePlayers = Object.values(game.players || {}).filter(p => p.isAlive);
-  const deadPlayers = Object.values(game.players || {}).filter(p => !p.isAlive);
+  const alivePlayers = Object.values(game.players || {}).filter(p => p.isAlive).sort((a, b) => a.name.localeCompare(b.name));
+  const deadPlayers = Object.values(game.players || {}).filter(p => !p.isAlive).sort((a, b) => a.name.localeCompare(b.name));
   
   const currentPlayer = game.players?.[user?.uid];
   const isDetective = currentPlayer?.role === 'detective';

@@ -16,7 +16,9 @@ function NightPhase({ game, player }) {
   const [showRole, setShowRole] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState(null);
 
-  const alivePlayers = Object.values(game.players || {}).filter(p => p.isAlive && p.uid !== user.uid);
+  const alivePlayers = Object.values(game.players || {})
+    .filter(p => p.isAlive && p.uid !== user.uid)
+    .sort((a, b) => a.name.localeCompare(b.name));
   const roleInfo = ROLE_INFO[player.role] || ROLE_INFO.villager;
   const isMafia = player.role === 'mafia';
 

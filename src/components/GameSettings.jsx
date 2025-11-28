@@ -17,7 +17,7 @@ function GameSettings({ game }) {
     mafiaProbability: {}
   });
 
-  const players = Object.values(game.players || {});
+  const players = Object.values(game.players || {}).sort((a, b) => a.name.localeCompare(b.name));
   
   const handleSave = async () => {
     try {

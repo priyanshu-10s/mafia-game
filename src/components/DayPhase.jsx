@@ -8,7 +8,9 @@ function DayPhase({ game, player }) {
   const { user } = useAuth();
   const [selectedTarget, setSelectedTarget] = useState(null);
 
-  const alivePlayers = Object.values(game.players || {}).filter(p => p.isAlive);
+  const alivePlayers = Object.values(game.players || {})
+    .filter(p => p.isAlive)
+    .sort((a, b) => a.name.localeCompare(b.name));
   const votes = game.votes || {};
   const aliveCount = alivePlayers.length;
   const votedCount = Object.keys(votes).length;

@@ -82,7 +82,7 @@ function Lobby() {
     );
   }
 
-  const players = Object.values(game.players || {});
+  const players = Object.values(game.players || {}).sort((a, b) => a.name.localeCompare(b.name));
   const canStart = players.length >= 4;
 
   return (
