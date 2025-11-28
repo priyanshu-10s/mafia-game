@@ -54,13 +54,16 @@
 
 .dummy-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-bottom: 1rem;
 }
 
 .btn-create,
-.btn-remove {
+.btn-remove,
+.btn-vote {
   flex: 1;
+  min-width: 150px;
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 8px;
@@ -78,6 +81,15 @@
   transform: translateY(-2px);
 }
 
+.btn-vote {
+  background: #10B981;
+  color: white;
+}
+
+.btn-vote:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
 .btn-remove {
   background: #EF4444;
   color: white;
@@ -88,7 +100,8 @@
 }
 
 .btn-create:disabled,
-.btn-remove:disabled {
+.btn-remove:disabled,
+.btn-vote:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

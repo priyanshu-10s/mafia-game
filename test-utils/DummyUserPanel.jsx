@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createDummyUsers, removeDummyUsers, DUMMY_USERS } from './createDummyUsers';
+import { createDummyUsers, removeDummyUsers, dummyUsersVote, DUMMY_USERS } from './createDummyUsers';
 import './DummyUserPanel.css';
 
 function DummyUserPanel() {
@@ -32,6 +32,18 @@ function DummyUserPanel() {
     setLoading(false);
   };
 
+  const handleVote = async () => {
+    setLoading(true);
+    setMessage('');
+    try {
+      const count = await dummyUsersVote();
+      setMessage(`✅ ${count} dummy users voted randomly`);
+    } catch (error) {
+      setMessage(`❌ Error: ${error.message}`);
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="dummy-panel">
       <h2>🧪 Test Utilities</h2>
@@ -58,6 +70,14 @@ function DummyUserPanel() {
           disabled={loading}
         >
           {loading ? 'Creating...' : 'Create Dummy Users'}
+        </button>
+        
+        <button 
+          className="btn-vote"
+          onClick={handleVote}
+          disabled={loading}
+        >
+          {loading ? 'Voting...' : '🎲 Random Vote (All Dummies)'}
         </button>
         
         <button 

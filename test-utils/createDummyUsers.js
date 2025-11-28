@@ -96,13 +96,84 @@ export async function createDummyUsers() {
     };
   });
 
-  await updateDoc(gameRef, {
-    players: players,
-    hostId: DUMMY_USERS[0].uid
-  });
+  // Don't change hostId - keep the real user as host
+  const currentData = gameSnap.exists() ? gameSnap.data() : {};
+  const updates = { players };
+  
+  // Only set host if there's no current host (and there's a real player)
+  if (!currentData.hostId) {
+    const realPlayers = Object.keys(players).filter(uid => !uid.startsWith('dummy_'));
+    if (realPlayers.length > 0) {
+      updates.hostId = realPlayers[0];
+    }
+  }
+
+  await updateDoc(gameRef, updates);
 
   console.log('✅ Dummy users created:', DUMMY_USERS.map(u => u.name).join(', '));
   return DUMMY_USERS;
+}
+
+export async function dummyUsersVote() {
+  const gameRef = doc(db, 'games', 'current_game');
+  const gameSnap = await getDoc(gameRef);
+
+  if (!gameSnap.exists()) {
+    throw new Error('No game found');
+  }
+
+  const game = gameSnap.data();
+  const phase = game.phase;
+  const dummyUids = DUMMY_USERS.map(u => u.uid);
+  
+  // Get alive dummy users
+  const aliveDummies = dummyUids.filter(uid => 
+    game.players[uid] && game.players[uid].isAlive
+  );
+
+  // Get all alive players (for targets)
+  const alivePlayers = Object.values(game.players).filter(p => p.isAlive);
+
+  if (phase === 'night') {
+    const actions = { ...(game.actions || {}) };
+    
+    aliveDummies.forEach(uid => {
+      const player = game.players[uid];
+      // Pick random target (not self)
+      const targets = alivePlayers.filter(p => p.uid !== uid);
+      const randomTarget = targets[Math.floor(Math.random() * targets.length)];
+      
+      actions[uid] = {
+        type: player.role || 'villager',
+        targetId: randomTarget?.uid || 'skip',
+        timestamp: new Date()
+      };
+    });
+
+    await updateDoc(gameRef, { actions });
+    console.log(`✅ ${aliveDummies.length} dummy users voted (night)`);
+    
+  } else if (phase === 'day') {
+    const votes = { ...(game.votes || {}) };
+    
+    aliveDummies.forEach(uid => {
+      // Pick random target (not self)
+      const targets = alivePlayers.filter(p => p.uid !== uid);
+      const randomTarget = targets[Math.floor(Math.random() * targets.length)];
+      
+      votes[uid] = {
+        targetId: randomTarget?.uid || 'skip',
+        timestamp: new Date()
+      };
+    });
+
+    await updateDoc(gameRef, { votes });
+    console.log(`✅ ${aliveDummies.length} dummy users voted (day)`);
+  } else {
+    throw new Error(`Cannot vote during ${phase || 'lobby'} phase`);
+  }
+
+  return aliveDummies.length;
 }
 
 export async function removeDummyUsers() {
@@ -123,10 +194,11 @@ export async function removeDummyUsers() {
 
   const updates = { players };
   
+  // If host was somehow a dummy, transfer to a real player
   if (dummyUids.includes(gameSnap.data().hostId)) {
-    const remainingUids = Object.keys(players);
-    if (remainingUids.length > 0) {
-      updates.hostId = remainingUids[0];
+    const realPlayers = Object.keys(players).filter(uid => !uid.startsWith('dummy_'));
+    if (realPlayers.length > 0) {
+      updates.hostId = realPlayers[0];
     } else {
       updates.hostId = null;
     }
