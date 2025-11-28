@@ -1,62 +1,99 @@
-// Sound effects for the game
-// Using free sound URLs - replace with your own if needed
+// Sound effects for the game using Web Audio API
+// This ensures sounds work without external dependencies
 
-const SOUNDS = {
-  gameStart: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
-  night: 'https://assets.mixkit.co/active_storage/sfx/2515/2515-preview.mp3',
-  day: 'https://assets.mixkit.co/active_storage/sfx/2513/2513-preview.mp3',
-  gameEnd: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
-  death: 'https://assets.mixkit.co/active_storage/sfx/2658/2658-preview.mp3',
-  vote: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'
-};
+let audioContext = null;
 
-// Audio cache to avoid re-loading
-const audioCache = {};
-
-// Preload sounds
-export function preloadSounds() {
-  Object.entries(SOUNDS).forEach(([key, url]) => {
-    const audio = new Audio(url);
-    audio.preload = 'auto';
-    audio.volume = 0.5;
-    audioCache[key] = audio;
-  });
+function getAudioContext() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioContext;
 }
 
-// Play a sound
-export function playSound(soundName, volume = 0.5) {
+// Generate a tone
+function playTone(frequency, duration, type = 'sine', volume = 0.3) {
   try {
-    // Get from cache or create new
-    let audio = audioCache[soundName];
+    const ctx = getAudioContext();
     
-    if (!audio && SOUNDS[soundName]) {
-      audio = new Audio(SOUNDS[soundName]);
-      audioCache[soundName] = audio;
+    // Resume context if suspended (browser autoplay policy)
+    if (ctx.state === 'suspended') {
+      ctx.resume();
     }
     
-    if (audio) {
-      // Clone to allow overlapping sounds
-      const clone = audio.cloneNode();
-      clone.volume = Math.min(1, Math.max(0, volume));
-      clone.play().catch(err => {
-        // Autoplay may be blocked - that's okay
-        console.log('Sound blocked by browser:', err.message);
-      });
-    }
-  } catch (error) {
-    console.log('Sound error:', error.message);
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+    
+    gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+    
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + duration);
+  } catch (e) {
+    console.log('Audio error:', e.message);
   }
 }
 
-// Sound effect shortcuts
+// Play a chord (multiple tones)
+function playChord(frequencies, duration, type = 'sine', volume = 0.2) {
+  frequencies.forEach((freq, i) => {
+    setTimeout(() => playTone(freq, duration, type, volume), i * 50);
+  });
+}
+
+// Play a melody (sequence of tones)
+function playMelody(notes, noteLength = 0.15, type = 'sine', volume = 0.3) {
+  notes.forEach((freq, i) => {
+    setTimeout(() => playTone(freq, noteLength, type, volume), i * (noteLength * 800));
+  });
+}
+
+// Sound effect functions
 export const sounds = {
-  gameStart: () => playSound('gameStart', 0.6),
-  night: () => playSound('night', 0.4),
-  day: () => playSound('day', 0.4),
-  gameEnd: () => playSound('gameEnd', 0.6),
-  death: () => playSound('death', 0.5),
-  vote: () => playSound('vote', 0.3)
+  // Game start - ascending triumphant chord
+  gameStart: () => {
+    playChord([262, 330, 392, 523], 0.8, 'triangle', 0.25);
+  },
+  
+  // Night - low mysterious tones
+  night: () => {
+    playMelody([196, 175, 165], 0.4, 'sine', 0.2);
+    setTimeout(() => playTone(98, 1.5, 'sine', 0.15), 200);
+  },
+  
+  // Day - bright ascending tones (like birds chirping)
+  day: () => {
+    playMelody([523, 659, 784, 880], 0.12, 'sine', 0.2);
+    setTimeout(() => playMelody([587, 740, 880], 0.1, 'sine', 0.15), 400);
+  },
+  
+  // Game end - victory fanfare
+  gameEnd: () => {
+    playMelody([392, 392, 392, 523], 0.2, 'triangle', 0.25);
+    setTimeout(() => playChord([523, 659, 784], 0.6, 'triangle', 0.2), 700);
+  },
+  
+  // Death - dramatic low tone
+  death: () => {
+    playTone(147, 0.5, 'sawtooth', 0.2);
+    setTimeout(() => playTone(131, 0.8, 'sawtooth', 0.15), 200);
+  }
 };
 
-export default sounds;
+// Preload - just initialize audio context on user interaction
+export function preloadSounds() {
+  // Audio context will be created on first sound play
+  // This is just a placeholder for compatibility
+  document.addEventListener('click', () => {
+    try {
+      getAudioContext();
+    } catch (e) {}
+  }, { once: true });
+}
 
+export default sounds;
