@@ -162,8 +162,13 @@ export const gameService = {
         isSpectator: isGameInProgress
       };
 
+      // Auto-assign as host if no host exists and game is not in progress
+      const currentHostId = gameData.hostId;
+      const shouldBecomeHost = !isGameInProgress && (!currentHostId || !players[currentHostId]);
+
       await updateDoc(gameRef, {
-        players: players
+        players: players,
+        ...(shouldBecomeHost && { hostId: user.uid })
       });
     }
 
