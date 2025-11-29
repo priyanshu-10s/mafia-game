@@ -241,7 +241,7 @@
   background: #4B5563;
 }
 
-.players-list {
+.admin-container .players-list {
   margin-top: 0.75rem;
   background: #111827;
   border-radius: 8px;
