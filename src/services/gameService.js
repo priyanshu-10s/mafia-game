@@ -8,7 +8,7 @@ export const LOBBIES = [
   { id: 'lobby_3', name: 'Lobby 3', icon: '🎯' }
 ];
 
-// Helper to get/set selected lobby
+// Helper to get/set selected lobby (localStorage for client-side)
 export function getSelectedLobby() {
   return localStorage.getItem('selectedLobby') || null;
 }
@@ -22,7 +22,49 @@ export function setSelectedLobby(lobbyId) {
 }
 
 export const gameService = {
-  // Get lobby info
+  // ============================================
+  // USER LOBBY TRACKING (Scalable approach)
+  // Uses userLobbies/{uid} for O(1) lookup
+  // ============================================
+  
+  // Track user's lobby membership in Firestore
+  async setUserLobby(userId, lobbyId) {
+    const userLobbyRef = doc(db, 'userLobbies', userId);
+    if (lobbyId) {
+      await setDoc(userLobbyRef, {
+        lobbyId: lobbyId,
+        joinedAt: serverTimestamp()
+      });
+    } else {
+      await deleteDoc(userLobbyRef);
+    }
+  },
+
+  // Clear user's lobby tracking
+  async clearUserLobby(userId) {
+    const userLobbyRef = doc(db, 'userLobbies', userId);
+    try {
+      await deleteDoc(userLobbyRef);
+    } catch (error) {
+      // Ignore if doesn't exist
+    }
+  },
+
+  // Find which lobby a user is in - O(1) single read!
+  async findUserLobby(userId) {
+    const userLobbyRef = doc(db, 'userLobbies', userId);
+    const userLobbySnap = await getDoc(userLobbyRef);
+    
+    if (userLobbySnap.exists()) {
+      return userLobbySnap.data().lobbyId;
+    }
+    return null;
+  },
+
+  // ============================================
+  // LOBBY INFO
+  // ============================================
+
   async getLobbyInfo(lobbyId) {
     const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);
@@ -46,18 +88,33 @@ export const gameService = {
     };
   },
 
-  // Get all lobbies status
   async getAllLobbiesStatus() {
+    // Parallel reads for all lobby statuses
+    const results = await Promise.all(
+      LOBBIES.map(lobby => this.getLobbyInfo(lobby.id))
+    );
+    
     const statuses = {};
-    for (const lobby of LOBBIES) {
-      statuses[lobby.id] = await this.getLobbyInfo(lobby.id);
-    }
+    LOBBIES.forEach((lobby, idx) => {
+      statuses[lobby.id] = results[idx];
+    });
     return statuses;
   },
+
+  // ============================================
+  // JOIN / LEAVE GAME
+  // ============================================
 
   async joinGame(user, lobbyId) {
     if (!lobbyId) {
       throw new Error('No lobby selected');
+    }
+
+    // Check if user is already in another lobby (single read!)
+    const currentLobby = await this.findUserLobby(user.uid);
+    if (currentLobby && currentLobby !== lobbyId) {
+      // Remove user from the other lobby first
+      await this.leaveGame(user.uid, currentLobby);
     }
 
     const gameRef = doc(db, 'games', lobbyId);
@@ -110,7 +167,14 @@ export const gameService = {
       });
     }
 
-    // Store the selected lobby
+    // Track user's lobby membership in Firestore
+    const userLobbyRef = doc(db, 'userLobbies', user.uid);
+    await setDoc(userLobbyRef, {
+      lobbyId: lobbyId,
+      joinedAt: serverTimestamp()
+    });
+
+    // Store the selected lobby locally
     setSelectedLobby(lobbyId);
 
     return players[user.uid];
@@ -123,24 +187,27 @@ export const gameService = {
     const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);
 
-    if (!gameSnap.exists()) return;
+    if (gameSnap.exists()) {
+      const gameData = gameSnap.data();
+      const players = { ...gameData.players };
+      delete players[userId];
 
-    const gameData = gameSnap.data();
-    const players = { ...gameData.players };
-    delete players[userId];
-
-    if (Object.keys(players).length === 0) {
-      await deleteDoc(gameRef);
-    } else {
-      const updates = { players };
-      if (gameData.hostId === userId) {
-        const newHostId = Object.keys(players)[0];
-        updates.hostId = newHostId;
+      if (Object.keys(players).length === 0) {
+        await deleteDoc(gameRef);
+      } else {
+        const updates = { players };
+        if (gameData.hostId === userId) {
+          const newHostId = Object.keys(players)[0];
+          updates.hostId = newHostId;
+        }
+        await updateDoc(gameRef, updates);
       }
-      await updateDoc(gameRef, updates);
     }
 
-    // Clear selected lobby
+    // Clear user's lobby tracking
+    await this.clearUserLobby(userId);
+
+    // Clear local selected lobby
     setSelectedLobby(null);
   },
 
@@ -160,7 +227,14 @@ export const gameService = {
     delete players[targetUserId];
 
     await updateDoc(gameRef, { players });
+
+    // Clear kicked user's lobby tracking
+    await this.clearUserLobby(targetUserId);
   },
+
+  // ============================================
+  // GAME SETTINGS
+  // ============================================
 
   async updateSettings(hostId, settings, lobbyId) {
     if (!lobbyId) lobbyId = getSelectedLobby();
@@ -177,6 +251,10 @@ export const gameService = {
       settings: { ...gameSnap.data().settings, ...settings }
     });
   },
+
+  // ============================================
+  // GAME FLOW
+  // ============================================
 
   async startGame(hostId, lobbyId) {
     if (!lobbyId) lobbyId = getSelectedLobby();
@@ -375,16 +453,35 @@ export const gameService = {
       throw new Error('No game to reset');
     }
 
-    if (gameSnap.data().hostId !== hostId) {
+    const gameData = gameSnap.data();
+
+    if (gameData.hostId !== hostId) {
       throw new Error('Only host can reset game');
     }
 
+    // Keep all players but reset their game-specific state
+    const resetPlayers = {};
+    Object.values(gameData.players || {}).forEach(player => {
+      resetPlayers[player.uid] = {
+        uid: player.uid,
+        name: player.name,
+        email: player.email,
+        photoURL: player.photoURL,
+        color: player.color,
+        ready: false,
+        isAlive: true,
+        role: null,
+        isSpectator: false
+      };
+    });
+
+    // Reset game to lobby state, keeping players and settings
     await setDoc(gameRef, {
       status: 'lobby',
       hostId: hostId,
-      players: {},
+      players: resetPlayers,
       lobbyId: lobbyId,
-      settings: gameSnap.data().settings || {
+      settings: gameData.settings || {
         numMafia: 2,
         hasDetective: true,
         hasDoctor: true,
@@ -395,9 +492,14 @@ export const gameService = {
       },
       createdAt: serverTimestamp()
     });
+    
+    // Note: Don't clear userLobbies tracking - players stay in the lobby
   },
 
-  // Admin functions
+  // ============================================
+  // ADMIN FUNCTIONS
+  // ============================================
+
   async assignHost(lobbyId, email) {
     const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);

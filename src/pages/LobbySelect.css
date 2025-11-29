@@ -26,7 +26,41 @@
 .welcome-text {
   color: #9CA3AF;
   font-size: 1.1rem;
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.current-lobby-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid #8B5CF6;
+  color: #D1D5DB;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.current-lobby-notice strong {
+  color: #A78BFA;
+}
+
+.btn-continue-quick {
+  background: #8B5CF6;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  transition: background 0.2s;
+}
+
+.btn-continue-quick:hover {
+  background: #7C3AED;
 }
 
 .lobbies-grid {
@@ -42,12 +76,38 @@
   padding: 1.5rem;
   border: 1px solid #374151;
   transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  position: relative;
 }
 
 .lobby-card:hover {
   transform: translateY(-4px);
   border-color: #8B5CF6;
   box-shadow: 0 10px 30px rgba(139, 92, 246, 0.2);
+}
+
+.lobby-card.current {
+  border-color: #10B981;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+.lobby-card.current:hover {
+  border-color: #10B981;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+}
+
+.current-indicator {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #10B981;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .lobby-header {
@@ -150,6 +210,14 @@
 
 .btn-join.loading {
   background: linear-gradient(135deg, #6B7280, #4B5563);
+}
+
+.btn-join.current {
+  background: linear-gradient(135deg, #10B981, #059669);
+}
+
+.btn-join.current:hover:not(:disabled) {
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
 }
 
 .btn-spinner {

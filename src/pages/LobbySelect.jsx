@@ -10,6 +10,7 @@ function LobbySelect() {
   const { selectLobby } = useGame();
   const navigate = useNavigate();
   const [lobbiesStatus, setLobbiesStatus] = useState({});
+  const [currentUserLobby, setCurrentUserLobby] = useState(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(null);
 
@@ -20,16 +21,24 @@ function LobbySelect() {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    loadLobbiesStatus();
-    // Refresh every 5 seconds
-    const interval = setInterval(loadLobbiesStatus, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (user) {
+      loadLobbiesStatus();
+      // Refresh every 5 seconds
+      const interval = setInterval(loadLobbiesStatus, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   const loadLobbiesStatus = async () => {
     try {
       const statuses = await gameService.getAllLobbiesStatus();
       setLobbiesStatus(statuses);
+      
+      // Find which lobby the user is currently in
+      if (user) {
+        const userLobby = await gameService.findUserLobby(user.uid);
+        setCurrentUserLobby(userLobby);
+      }
     } catch (error) {
       console.error('Failed to load lobbies:', error);
     } finally {
@@ -39,6 +48,14 @@ function LobbySelect() {
 
   const handleJoinLobby = async (lobbyId) => {
     if (!user || joining) return;
+    
+    // If switching lobbies, confirm with user
+    if (currentUserLobby && currentUserLobby !== lobbyId) {
+      const currentLobbyName = LOBBIES.find(l => l.id === currentUserLobby)?.name || currentUserLobby;
+      if (!confirm(`You're currently in ${currentLobbyName}. Switch to this lobby?`)) {
+        return;
+      }
+    }
     
     setJoining(lobbyId);
     try {
@@ -58,8 +75,24 @@ function LobbySelect() {
     }
   };
 
+  const handleContinue = () => {
+    if (currentUserLobby) {
+      selectLobby(currentUserLobby);
+      const status = lobbiesStatus[currentUserLobby];
+      if (status?.status === 'playing' || status?.status === 'ended') {
+        navigate('/game');
+      } else {
+        navigate('/lobby');
+      }
+    }
+  };
+
   const handleLogout = async () => {
     try {
+      // Leave current lobby if in one
+      if (currentUserLobby) {
+        await gameService.leaveGame(user.uid, currentUserLobby);
+      }
       await logout();
       navigate('/');
     } catch (error) {
@@ -80,7 +113,8 @@ function LobbySelect() {
     }
   };
 
-  const getJoinButtonText = (status) => {
+  const getJoinButtonText = (lobbyId, status) => {
+    if (currentUserLobby === lobbyId) return 'Continue';
     if (status?.status === 'playing') return 'Spectate';
     if (status?.status === 'ended') return 'View Results';
     return 'Join';
@@ -103,13 +137,25 @@ function LobbySelect() {
         <h1 className="page-title">🎭 Choose a Lobby</h1>
         <p className="welcome-text">Welcome, {user?.displayName}!</p>
 
+        {currentUserLobby && (
+          <div className="current-lobby-notice">
+            <span>You're currently in </span>
+            <strong>{LOBBIES.find(l => l.id === currentUserLobby)?.name}</strong>
+            <button className="btn-continue-quick" onClick={handleContinue}>
+              Continue →
+            </button>
+          </div>
+        )}
+
         <div className="lobbies-grid">
           {LOBBIES.map((lobby) => {
             const status = lobbiesStatus[lobby.id];
             const isJoining = joining === lobby.id;
+            const isCurrentLobby = currentUserLobby === lobby.id;
             
             return (
-              <div key={lobby.id} className="lobby-card">
+              <div key={lobby.id} className={`lobby-card ${isCurrentLobby ? 'current' : ''}`}>
+                {isCurrentLobby && <div className="current-indicator">You're here</div>}
                 <div className="lobby-header">
                   <span className="lobby-icon">{lobby.icon}</span>
                   <h2 className="lobby-name">{lobby.name}</h2>
@@ -130,8 +176,8 @@ function LobbySelect() {
                 </div>
 
                 <button
-                  className={`btn-join ${isJoining ? 'loading' : ''}`}
-                  onClick={() => handleJoinLobby(lobby.id)}
+                  className={`btn-join ${isJoining ? 'loading' : ''} ${isCurrentLobby ? 'current' : ''}`}
+                  onClick={() => isCurrentLobby ? handleContinue() : handleJoinLobby(lobby.id)}
                   disabled={joining !== null}
                 >
                   {isJoining ? (
@@ -140,7 +186,7 @@ function LobbySelect() {
                       Joining...
                     </>
                   ) : (
-                    getJoinButtonText(status)
+                    getJoinButtonText(lobby.id, status)
                   )}
                 </button>
               </div>
@@ -157,4 +203,3 @@ function LobbySelect() {
 }
 
 export default LobbySelect;
-

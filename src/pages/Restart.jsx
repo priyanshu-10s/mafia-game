@@ -129,9 +129,9 @@ function Restart() {
           <p>This will:</p>
           <ul>
             <li>End the current game in {lobbyInfo?.name || 'this lobby'}</li>
-            <li>Remove all players from the game</li>
-            <li>Reset all settings to default</li>
-            <li>Create a fresh lobby</li>
+            <li>Reset all roles and game progress</li>
+            <li>Keep all players in the lobby</li>
+            <li>Preserve game settings</li>
           </ul>
         </div>
 
