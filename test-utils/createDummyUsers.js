@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -91,7 +91,8 @@ export async function createDummyUsers(lobbyId = 'lobby_1') {
     });
   }
 
-  DUMMY_USERS.forEach(user => {
+  // Add dummy users to players and create their userLobbies tracking
+  for (const user of DUMMY_USERS) {
     players[user.uid] = {
       uid: user.uid,
       name: user.name,
@@ -102,7 +103,15 @@ export async function createDummyUsers(lobbyId = 'lobby_1') {
       isAlive: true,
       role: null
     };
-  });
+
+    // Create userLobbies doc so they don't get marked as stale
+    const userLobbyRef = doc(db, 'userLobbies', user.uid);
+    await setDoc(userLobbyRef, {
+      lobbyId: lobbyId,
+      joinedAt: serverTimestamp(),
+      lastActive: serverTimestamp()
+    });
+  }
 
   // Don't change hostId - keep the real user as host
   const currentData = gameSnap.exists() ? gameSnap.data() : {};
@@ -200,9 +209,18 @@ export async function removeDummyUsers(lobbyId = 'lobby_1') {
   const players = { ...gameSnap.data().players };
   const dummyUids = DUMMY_USERS.map(u => u.uid);
   
-  dummyUids.forEach(uid => {
+  // Remove dummy users from players and their userLobbies tracking
+  for (const uid of dummyUids) {
     delete players[uid];
-  });
+    
+    // Also delete their userLobbies doc
+    const userLobbyRef = doc(db, 'userLobbies', uid);
+    try {
+      await deleteDoc(userLobbyRef);
+    } catch (e) {
+      // Ignore if doesn't exist
+    }
+  }
 
   const updates = { players };
   
