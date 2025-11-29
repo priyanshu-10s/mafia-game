@@ -27,13 +27,23 @@ function DeadPlayerView({ game, player }) {
         </div>
 
         <div className="death-banner">
-          <div className="coffin-icon">⚰️</div>
-          <h1>You Are Dead</h1>
-          <p>You were eliminated in Round {player.eliminatedRound || game.round}</p>
+          {player.isSpectator ? (
+            <>
+              <div className="coffin-icon">👁️</div>
+              <h1>Spectator Mode</h1>
+              <p>You joined while the game was in progress</p>
+            </>
+          ) : (
+            <>
+              <div className="coffin-icon">⚰️</div>
+              <h1>You Are Dead</h1>
+              <p>You were eliminated in Round {player.eliminatedRound || game.round}</p>
+            </>
+          )}
         </div>
 
         <div className="spectator-info">
-          <p>You can still spectate but cannot vote or perform actions.</p>
+          <p>You can spectate but cannot vote or perform actions.</p>
           <p className="watch-text">Watch the game unfold!</p>
         </div>
 

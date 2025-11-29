@@ -29,8 +29,13 @@ function Home() {
     
     setJoining(true);
     try {
-      await gameService.joinGame(user);
-      navigate('/lobby');
+      const player = await gameService.joinGame(user);
+      // If joined as spectator (late joiner), go directly to game
+      if (player.isSpectator) {
+        navigate('/game');
+      } else {
+        navigate('/lobby');
+      }
     } catch (error) {
       console.error('Join game error:', error);
       setJoining(false);

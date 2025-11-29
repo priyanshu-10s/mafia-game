@@ -28,6 +28,7 @@ export const gameService = {
 
     const gameData = gameSnap.exists() ? gameSnap.data() : {};
     const players = gameData.players || {};
+    const isGameInProgress = gameData.status === 'playing' || gameData.status === 'ended';
 
     if (!players[user.uid]) {
       const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#E74C3C', '#3498DB', '#2ECC71', '#9B59B6', '#E67E22', '#1ABC9C', '#34495E', '#F39C12', '#E91E63', '#00BCD4', '#8BC34A'];
@@ -35,6 +36,7 @@ export const gameService = {
       const availableColors = colors.filter(c => !usedColors.includes(c));
       const color = availableColors[Math.floor(Math.random() * availableColors.length)] || colors[Math.floor(Math.random() * colors.length)];
 
+      // If game is in progress, add as dead spectator (villager role)
       players[user.uid] = {
         uid: user.uid,
         name: user.displayName,
@@ -42,8 +44,9 @@ export const gameService = {
         photoURL: user.photoURL,
         color: color,
         ready: false,
-        isAlive: true,
-        role: null
+        isAlive: !isGameInProgress,
+        role: isGameInProgress ? 'villager' : null,
+        isSpectator: isGameInProgress  // Flag to identify late joiners
       };
 
       await updateDoc(gameRef, {
