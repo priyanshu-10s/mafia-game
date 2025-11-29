@@ -8,7 +8,7 @@ import './GameEnd.css';
 
 function GameEnd({ game, player }) {
   const { user, logout } = useAuth();
-  const { isHost } = useGame();
+  const { isHost, lobbyId, clearLobby } = useGame();
   const navigate = useNavigate();
   const soundPlayed = useRef(false);
 
@@ -31,20 +31,31 @@ function GameEnd({ game, player }) {
 
   const handlePlayAgain = async () => {
     try {
-      await gameService.resetGame(user.uid);
+      await gameService.resetGame(user.uid, lobbyId);
       navigate('/lobby');
     } catch (error) {
       alert(error.message || 'Failed to reset game');
     }
   };
 
-  const handleLeave = async () => {
+  const handleChangeLobby = async () => {
     try {
-      await gameService.leaveGame(user.uid);
+      await gameService.leaveGame(user.uid, lobbyId);
+      clearLobby();
+      navigate('/select-lobby');
+    } catch (error) {
+      console.error('Leave error:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await gameService.leaveGame(user.uid, lobbyId);
+      clearLobby();
       await logout();
       navigate('/');
     } catch (error) {
-      console.error('Leave error:', error);
+      console.error('Logout error:', error);
     }
   };
 
@@ -116,13 +127,17 @@ function GameEnd({ game, player }) {
           </button>
         )}
 
-        <button className="btn-leave" onClick={handleLeave}>
-          Back to Home
-        </button>
+        <div className="end-actions">
+          <button className="btn-change-lobby" onClick={handleChangeLobby}>
+            Change Lobby
+          </button>
+          <button className="btn-leave" onClick={handleLogout}>
+            Sign Out
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
 export default GameEnd;
-

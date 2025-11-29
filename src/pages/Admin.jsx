@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { doc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { gameService, LOBBIES } from '../services/gameService';
 import './Admin.css';
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
@@ -10,24 +11,27 @@ function Admin() {
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
+  const [lobbiesData, setLobbiesData] = useState({});
+  const [selectedLobby, setSelectedLobby] = useState(LOBBIES[0].id);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
-  const [game, setGame] = useState(null);
-  const [showPlayers, setShowPlayers] = useState(false);
+  const [showPlayers, setShowPlayers] = useState({});
 
   useEffect(() => {
     if (!authenticated || !db) return;
 
-    const gameRef = doc(db, 'games', 'current_game');
-    const unsubscribe = onSnapshot(gameRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setGame(snapshot.data());
-      } else {
-        setGame(null);
-      }
+    // Subscribe to all lobbies
+    const unsubscribes = LOBBIES.map(lobby => {
+      const gameRef = doc(db, 'games', lobby.id);
+      return onSnapshot(gameRef, (snapshot) => {
+        setLobbiesData(prev => ({
+          ...prev,
+          [lobby.id]: snapshot.exists() ? snapshot.data() : null
+        }));
+      });
     });
 
-    return () => unsubscribe();
+    return () => unsubscribes.forEach(unsub => unsub());
   }, [authenticated]);
 
   const handleLogin = (e) => {
@@ -48,47 +52,42 @@ function Admin() {
     }
 
     try {
-      const gameRef = doc(db, 'games', 'current_game');
-      const gameSnap = await getDoc(gameRef);
-
-      if (!gameSnap.exists()) {
-        setMessage('No game found. Create a game first.');
-        return;
-      }
-
-      const gameData = gameSnap.data();
-      const players = gameData.players || {};
-      
-      const hostPlayer = Object.values(players).find(p => p.email === email);
-      
-      if (!hostPlayer) {
-        setMessage('Player with this email not found in game');
-        return;
-      }
-
-      await updateDoc(gameRef, {
-        hostId: hostPlayer.uid
-      });
-
-      setMessage(`Host assigned to ${hostPlayer.name} (${email})`);
+      const hostPlayer = await gameService.assignHost(selectedLobby, email);
+      setMessage(`Host assigned to ${hostPlayer.name} in ${getLobbyName(selectedLobby)}`);
       setEmail('');
     } catch (error) {
       console.error('Assign host error:', error);
-      setMessage('Failed to assign host: ' + error.message);
+      setMessage('Failed: ' + error.message);
     }
   };
 
-  const players = game?.players ? Object.values(game.players).sort((a, b) => a.name.localeCompare(b.name)) : [];
-  const hostPlayer = players.find(p => p.uid === game?.hostId);
+  const getLobbyName = (lobbyId) => {
+    return LOBBIES.find(l => l.id === lobbyId)?.name || lobbyId;
+  };
 
   const getStatusText = (status) => {
     switch (status) {
       case 'lobby': return 'In Lobby';
-      case 'night': return 'Night Phase';
-      case 'day': return 'Day Phase';
-      case 'ended': return 'Game Ended';
-      default: return 'Unknown';
+      case 'playing': return 'Playing';
+      case 'ended': return 'Ended';
+      default: return 'Empty';
     }
+  };
+
+  const getStatusClass = (status) => {
+    switch (status) {
+      case 'lobby': return 'status-lobby';
+      case 'playing': return 'status-playing';
+      case 'ended': return 'status-ended';
+      default: return 'status-empty';
+    }
+  };
+
+  const togglePlayers = (lobbyId) => {
+    setShowPlayers(prev => ({
+      ...prev,
+      [lobbyId]: !prev[lobbyId]
+    }));
   };
 
   if (!authenticated) {
@@ -122,7 +121,18 @@ function Admin() {
         
         <div className="admin-section">
           <h2>Assign Host</h2>
-          <form onSubmit={handleAssignHost}>
+          <form onSubmit={handleAssignHost} className="assign-host-form">
+            <select 
+              value={selectedLobby} 
+              onChange={(e) => setSelectedLobby(e.target.value)}
+              className="admin-select"
+            >
+              {LOBBIES.map(lobby => (
+                <option key={lobby.id} value={lobby.id}>
+                  {lobby.icon} {lobby.name}
+                </option>
+              ))}
+            </select>
             <input
               type="email"
               placeholder="Player email address"
@@ -133,7 +143,7 @@ function Admin() {
             <button type="submit" className="btn-admin">Make Host</button>
           </form>
           {message && (
-            <div className={`admin-message ${message.includes('Failed') || message.includes('not found') ? 'error' : 'success'}`}>
+            <div className={`admin-message ${message.includes('Failed') ? 'error' : 'success'}`}>
               {message}
             </div>
           )}
@@ -142,50 +152,77 @@ function Admin() {
         <div className="divider" />
 
         <div className="admin-section">
-          <h2>Current Game Status</h2>
-          {game ? (
-            <div className="game-status">
-              <div className="status-row">
-                <span className="status-label">Status:</span>
-                <span className="status-value">{getStatusText(game.status)}</span>
-              </div>
-              <div className="status-row">
-                <span className="status-label">Players:</span>
-                <span className="status-value">{players.length}/20</span>
-              </div>
-              <div className="status-row">
-                <span className="status-label">Host:</span>
-                <span className="status-value">{hostPlayer?.email || 'Not assigned'}</span>
-              </div>
-              {game.round > 0 && (
-                <div className="status-row">
-                  <span className="status-label">Round:</span>
-                  <span className="status-value">{game.round}</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="no-game">No active game</p>
-          )}
+          <h2>All Lobbies Status</h2>
+          <div className="lobbies-overview">
+            {LOBBIES.map(lobby => {
+              const game = lobbiesData[lobby.id];
+              const players = game?.players ? Object.values(game.players).sort((a, b) => a.name.localeCompare(b.name)) : [];
+              const hostPlayer = players.find(p => p.uid === game?.hostId);
 
-          <button 
-            className="btn-view-players"
-            onClick={() => setShowPlayers(!showPlayers)}
-          >
-            {showPlayers ? 'Hide Players' : 'View All Players'}
-          </button>
+              return (
+                <div key={lobby.id} className="lobby-status-card">
+                  <div className="lobby-header">
+                    <span className="lobby-icon">{lobby.icon}</span>
+                    <span className="lobby-name">{lobby.name}</span>
+                    <span className={`status-pill ${getStatusClass(game?.status)}`}>
+                      {getStatusText(game?.status)}
+                    </span>
+                  </div>
 
-          {showPlayers && players.length > 0 && (
-            <div className="players-list">
-              {players.map(p => (
-                <div key={p.uid} className="player-row" style={{ borderLeftColor: p.color }}>
-                  <span className="player-name">{p.name}</span>
-                  <span className="player-email">{p.email}</span>
-                  {p.uid === game?.hostId && <span className="host-badge">Host</span>}
+                  <div className="lobby-details">
+                    <div className="detail-row">
+                      <span className="detail-label">Players:</span>
+                      <span className="detail-value">{players.length}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Host:</span>
+                      <span className="detail-value">{hostPlayer?.name || 'None'}</span>
+                    </div>
+                    {game?.status === 'playing' && (
+                      <>
+                        <div className="detail-row">
+                          <span className="detail-label">Phase:</span>
+                          <span className="detail-value">{game.phase}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="detail-label">Round:</span>
+                          <span className="detail-value">{game.round}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <button 
+                    className="btn-toggle-players"
+                    onClick={() => togglePlayers(lobby.id)}
+                  >
+                    {showPlayers[lobby.id] ? 'Hide Players' : 'Show Players'}
+                  </button>
+
+                  {showPlayers[lobby.id] && players.length > 0 && (
+                    <div className="players-list">
+                      {players.map(p => (
+                        <div key={p.uid} className="player-row" style={{ borderLeftColor: p.color }}>
+                          <span className="player-name">{p.name}</span>
+                          <span className="player-email">{p.email}</span>
+                          {p.uid === game?.hostId && <span className="host-badge">Host</span>}
+                          {game?.status === 'playing' && (
+                            <span className={`alive-badge ${p.isAlive ? 'alive' : 'dead'}`}>
+                              {p.isAlive ? '✓' : '✗'}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {players.length === 0 && (
+                    <p className="no-players">No players in this lobby</p>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
 
         <button className="btn-back" onClick={() => navigate('/')}>

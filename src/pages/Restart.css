@@ -13,6 +13,17 @@
   text-align: center;
 }
 
+.lobby-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #8B5CF6, #EC4899);
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
 .restart-content h1 {
   font-size: 2rem;
   color: #F9FAFB;

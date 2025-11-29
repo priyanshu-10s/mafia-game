@@ -2,19 +2,26 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
-import { gameService } from '../services/gameService';
+import { gameService, LOBBIES } from '../services/gameService';
 import './Restart.css';
 
 function Restart() {
   const { user } = useAuth();
-  const { game, isHost, loading } = useGame();
+  const { game, isHost, loading, lobbyId } = useGame();
   const navigate = useNavigate();
   const [restarting, setRestarting] = useState(false);
   const [message, setMessage] = useState('');
 
+  const lobbyInfo = LOBBIES.find(l => l.id === lobbyId);
+
   const handleRestart = async () => {
     if (!isHost) {
       setMessage('Only the host can restart the game');
+      return;
+    }
+
+    if (!lobbyId) {
+      setMessage('No lobby selected');
       return;
     }
 
@@ -26,7 +33,7 @@ function Restart() {
     setMessage('');
 
     try {
-      await gameService.resetGame(user.uid);
+      await gameService.resetGame(user.uid, lobbyId);
       setMessage('Game restarted successfully!');
       setTimeout(() => {
         navigate('/lobby');
@@ -65,10 +72,31 @@ function Restart() {
     );
   }
 
+  if (!lobbyId) {
+    return (
+      <div className="restart-container">
+        <div className="restart-content">
+          <h1>🔄 Restart Game</h1>
+          <div className="restart-message error">
+            No lobby selected
+          </div>
+          <button className="btn-back" onClick={() => navigate('/select-lobby')}>
+            Select a Lobby
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!isHost) {
     return (
       <div className="restart-container">
         <div className="restart-content">
+          {lobbyInfo && (
+            <div className="lobby-badge">
+              {lobbyInfo.icon} {lobbyInfo.name}
+            </div>
+          )}
           <h1>🔄 Restart Game</h1>
           <div className="restart-message error">
             ⚠️ Only the host can restart the game
@@ -88,6 +116,11 @@ function Restart() {
   return (
     <div className="restart-container">
       <div className="restart-content">
+        {lobbyInfo && (
+          <div className="lobby-badge">
+            {lobbyInfo.icon} {lobbyInfo.name}
+          </div>
+        )}
         <h1>🔄 Restart Game</h1>
         
         <div className="warning-box">
@@ -95,7 +128,7 @@ function Restart() {
           <h2>Are you sure?</h2>
           <p>This will:</p>
           <ul>
-            <li>End the current game</li>
+            <li>End the current game in {lobbyInfo?.name || 'this lobby'}</li>
             <li>Remove all players from the game</li>
             <li>Reset all settings to default</li>
             <li>Create a fresh lobby</li>
@@ -143,4 +176,3 @@ function Restart() {
 }
 
 export default Restart;
-

@@ -2,9 +2,9 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from './AuthContext';
+import { getSelectedLobby, setSelectedLobby } from '../services/gameService';
 
 const GameContext = createContext();
-const GAME_ID = 'current_game';
 
 export function useGame() {
   return useContext(GameContext);
@@ -15,6 +15,21 @@ export function GameProvider({ children }) {
   const [game, setGame] = useState(null);
   const [player, setPlayer] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lobbyId, setLobbyIdState] = useState(getSelectedLobby());
+
+  // Function to change lobby
+  const selectLobby = (newLobbyId) => {
+    setSelectedLobby(newLobbyId);
+    setLobbyIdState(newLobbyId);
+  };
+
+  // Function to clear lobby selection
+  const clearLobby = () => {
+    setSelectedLobby(null);
+    setLobbyIdState(null);
+    setGame(null);
+    setPlayer(null);
+  };
 
   useEffect(() => {
     if (!user) {
@@ -30,9 +45,16 @@ export function GameProvider({ children }) {
       return;
     }
 
+    if (!lobbyId) {
+      setGame(null);
+      setPlayer(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     
-    const gameRef = doc(db, 'games', GAME_ID);
+    const gameRef = doc(db, 'games', lobbyId);
     const unsubscribe = onSnapshot(gameRef, (snapshot) => {
       if (!snapshot.exists()) {
         setGame(null);
@@ -41,7 +63,7 @@ export function GameProvider({ children }) {
         return;
       }
 
-      const gameData = { id: snapshot.id, ...snapshot.data() };
+      const gameData = { id: snapshot.id, lobbyId, ...snapshot.data() };
       setGame(gameData);
 
       if (gameData.players && user.uid in gameData.players) {
@@ -57,16 +79,18 @@ export function GameProvider({ children }) {
     });
 
     return unsubscribe;
-  }, [user]);
+  }, [user, lobbyId]);
 
   const value = {
     game,
     player,
     loading,
+    lobbyId,
+    selectLobby,
+    clearLobby,
     isHost: game?.hostId === user?.uid,
     isInGame: !!player
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }
-

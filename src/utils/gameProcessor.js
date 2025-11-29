@@ -1,11 +1,14 @@
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { processNightPhase, processDayPhase, checkWinCondition, shouldEndPhaseEarly } from './gameLogic';
+import { getSelectedLobby } from '../services/gameService';
 
-const GAME_ID = 'current_game';
+export async function processGamePhase(lobbyId) {
+  // Use provided lobbyId or fall back to selected lobby
+  if (!lobbyId) lobbyId = getSelectedLobby();
+  if (!lobbyId) return;
 
-export async function processGamePhase() {
-  const gameRef = doc(db, 'games', GAME_ID);
+  const gameRef = doc(db, 'games', lobbyId);
   const gameSnap = await getDoc(gameRef);
 
   if (!gameSnap.exists()) return;

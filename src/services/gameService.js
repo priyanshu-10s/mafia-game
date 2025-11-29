@@ -1,11 +1,66 @@
-import { doc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-const GAME_ID = 'current_game';
+// Available lobbies
+export const LOBBIES = [
+  { id: 'lobby_1', name: 'Lobby 1', icon: '🎭' },
+  { id: 'lobby_2', name: 'Lobby 2', icon: '🎪' },
+  { id: 'lobby_3', name: 'Lobby 3', icon: '🎯' }
+];
+
+// Helper to get/set selected lobby
+export function getSelectedLobby() {
+  return localStorage.getItem('selectedLobby') || null;
+}
+
+export function setSelectedLobby(lobbyId) {
+  if (lobbyId) {
+    localStorage.setItem('selectedLobby', lobbyId);
+  } else {
+    localStorage.removeItem('selectedLobby');
+  }
+}
 
 export const gameService = {
-  async joinGame(user) {
-    const gameRef = doc(db, 'games', GAME_ID);
+  // Get lobby info
+  async getLobbyInfo(lobbyId) {
+    const gameRef = doc(db, 'games', lobbyId);
+    const gameSnap = await getDoc(gameRef);
+    
+    if (!gameSnap.exists()) {
+      return {
+        status: 'empty',
+        playerCount: 0,
+        hostName: null
+      };
+    }
+    
+    const data = gameSnap.data();
+    const players = Object.values(data.players || {});
+    const host = players.find(p => p.uid === data.hostId);
+    
+    return {
+      status: data.status,
+      playerCount: players.length,
+      hostName: host?.name || null
+    };
+  },
+
+  // Get all lobbies status
+  async getAllLobbiesStatus() {
+    const statuses = {};
+    for (const lobby of LOBBIES) {
+      statuses[lobby.id] = await this.getLobbyInfo(lobby.id);
+    }
+    return statuses;
+  },
+
+  async joinGame(user, lobbyId) {
+    if (!lobbyId) {
+      throw new Error('No lobby selected');
+    }
+
+    const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);
 
     if (!gameSnap.exists()) {
@@ -13,6 +68,7 @@ export const gameService = {
         status: 'lobby',
         hostId: null,
         players: {},
+        lobbyId: lobbyId,
         settings: {
           numMafia: 2,
           hasDetective: true,
@@ -46,7 +102,7 @@ export const gameService = {
         ready: false,
         isAlive: !isGameInProgress,
         role: isGameInProgress ? 'villager' : null,
-        isSpectator: isGameInProgress  // Flag to identify late joiners
+        isSpectator: isGameInProgress
       };
 
       await updateDoc(gameRef, {
@@ -54,11 +110,17 @@ export const gameService = {
       });
     }
 
+    // Store the selected lobby
+    setSelectedLobby(lobbyId);
+
     return players[user.uid];
   },
 
-  async leaveGame(userId) {
-    const gameRef = doc(db, 'games', GAME_ID);
+  async leaveGame(userId, lobbyId) {
+    if (!lobbyId) lobbyId = getSelectedLobby();
+    if (!lobbyId) return;
+
+    const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);
 
     if (!gameSnap.exists()) return;
@@ -77,10 +139,16 @@ export const gameService = {
       }
       await updateDoc(gameRef, updates);
     }
+
+    // Clear selected lobby
+    setSelectedLobby(null);
   },
 
-  async kickPlayer(hostId, targetUserId) {
-    const gameRef = doc(db, 'games', GAME_ID);
+  async kickPlayer(hostId, targetUserId, lobbyId) {
+    if (!lobbyId) lobbyId = getSelectedLobby();
+    if (!lobbyId) throw new Error('No lobby selected');
+
+    const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);
 
     if (!gameSnap.exists() || gameSnap.data().hostId !== hostId) {
@@ -94,8 +162,11 @@ export const gameService = {
     await updateDoc(gameRef, { players });
   },
 
-  async updateSettings(hostId, settings) {
-    const gameRef = doc(db, 'games', GAME_ID);
+  async updateSettings(hostId, settings, lobbyId) {
+    if (!lobbyId) lobbyId = getSelectedLobby();
+    if (!lobbyId) throw new Error('No lobby selected');
+
+    const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);
 
     if (!gameSnap.exists() || gameSnap.data().hostId !== hostId) {
@@ -107,8 +178,11 @@ export const gameService = {
     });
   },
 
-  async startGame(hostId) {
-    const gameRef = doc(db, 'games', GAME_ID);
+  async startGame(hostId, lobbyId) {
+    if (!lobbyId) lobbyId = getSelectedLobby();
+    if (!lobbyId) throw new Error('No lobby selected');
+
+    const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);
 
     if (!gameSnap.exists() || gameSnap.data().hostId !== hostId) {
@@ -213,8 +287,11 @@ export const gameService = {
     return assignedRoles;
   },
 
-  async submitAction(userId, actionType, targetId) {
-    const gameRef = doc(db, 'games', GAME_ID);
+  async submitAction(userId, actionType, targetId, lobbyId) {
+    if (!lobbyId) lobbyId = getSelectedLobby();
+    if (!lobbyId) throw new Error('No lobby selected');
+
+    const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);
 
     if (!gameSnap.exists()) {
@@ -230,7 +307,6 @@ export const gameService = {
 
     const actions = { ...(gameData.actions || {}) };
     
-    // 'skip' means remove action (undo)
     if (targetId === 'skip') {
       delete actions[userId];
     } else {
@@ -245,13 +321,16 @@ export const gameService = {
     
     setTimeout(() => {
       import('../utils/gameProcessor').then(({ processGamePhase }) => {
-        processGamePhase();
+        processGamePhase(lobbyId);
       });
     }, 1000);
   },
 
-  async submitVote(userId, targetId) {
-    const gameRef = doc(db, 'games', GAME_ID);
+  async submitVote(userId, targetId, lobbyId) {
+    if (!lobbyId) lobbyId = getSelectedLobby();
+    if (!lobbyId) throw new Error('No lobby selected');
+
+    const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);
 
     if (!gameSnap.exists()) {
@@ -267,7 +346,6 @@ export const gameService = {
 
     const votes = { ...(gameData.votes || {}) };
     
-    // 'skip' means remove vote (undo)
     if (targetId === 'skip') {
       delete votes[userId];
     } else {
@@ -281,13 +359,16 @@ export const gameService = {
     
     setTimeout(() => {
       import('../utils/gameProcessor').then(({ processGamePhase }) => {
-        processGamePhase();
+        processGamePhase(lobbyId);
       });
     }, 1000);
   },
 
-  async resetGame(hostId) {
-    const gameRef = doc(db, 'games', GAME_ID);
+  async resetGame(hostId, lobbyId) {
+    if (!lobbyId) lobbyId = getSelectedLobby();
+    if (!lobbyId) throw new Error('No lobby selected');
+
+    const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);
 
     if (!gameSnap.exists()) {
@@ -302,6 +383,7 @@ export const gameService = {
       status: 'lobby',
       hostId: hostId,
       players: {},
+      lobbyId: lobbyId,
       settings: gameSnap.data().settings || {
         numMafia: 2,
         hasDetective: true,
@@ -313,6 +395,30 @@ export const gameService = {
       },
       createdAt: serverTimestamp()
     });
+  },
+
+  // Admin functions
+  async assignHost(lobbyId, email) {
+    const gameRef = doc(db, 'games', lobbyId);
+    const gameSnap = await getDoc(gameRef);
+
+    if (!gameSnap.exists()) {
+      throw new Error('No game found in this lobby');
+    }
+
+    const gameData = gameSnap.data();
+    const players = gameData.players || {};
+    
+    const hostPlayer = Object.values(players).find(p => p.email === email);
+    
+    if (!hostPlayer) {
+      throw new Error('Player with this email not found in lobby');
+    }
+
+    await updateDoc(gameRef, {
+      hostId: hostPlayer.uid
+    });
+
+    return hostPlayer;
   }
 };
-

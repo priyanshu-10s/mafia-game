@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { GameProvider } from './contexts/GameContext';
 import { preloadSounds } from './utils/sounds';
 import Home from './pages/Home';
+import LobbySelect from './pages/LobbySelect';
 import Lobby from './pages/Lobby';
 import Game from './pages/Game';
 import Admin from './pages/Admin';
@@ -24,6 +25,7 @@ function App() {
           <div className="App">
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/select-lobby" element={<LobbySelect />} />
               <Route path="/lobby" element={<Lobby />} />
               <Route path="/game" element={<Game />} />
               <Route path="/admin" element={<Admin />} />

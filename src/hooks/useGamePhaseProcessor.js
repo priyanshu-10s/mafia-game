@@ -3,18 +3,17 @@ import { useGame } from '../contexts/GameContext';
 import { processGamePhase } from '../utils/gameProcessor';
 
 export function useGamePhaseProcessor() {
-  const { game } = useGame();
+  const { game, lobbyId } = useGame();
 
   useEffect(() => {
-    if (!game || game.status === 'lobby' || game.status === 'ended') {
+    if (!game || !lobbyId || game.status === 'lobby' || game.status === 'ended') {
       return;
     }
 
     const interval = setInterval(() => {
-      processGamePhase();
+      processGamePhase(lobbyId);
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [game]);
+  }, [game, lobbyId]);
 }
-

@@ -1,20 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { gameService } from '../services/gameService';
+import { useGame } from '../contexts/GameContext';
 import './Home.css';
 
 function Home() {
   const { user, signInWithGoogle, loading: authLoading } = useAuth();
+  const { lobbyId, game, player, clearLobby } = useGame();
   const navigate = useNavigate();
   const [showHowToPlay, setShowHowToPlay] = useState(false);
-  const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     if (user && !authLoading) {
-      handleJoinGame();
+      // If user already has a lobby selected and is in a game
+      if (lobbyId && player) {
+        if (game?.status === 'playing' || game?.status === 'ended') {
+          navigate('/game');
+        } else {
+          navigate('/lobby');
+        }
+      } else if (lobbyId && !player) {
+        // Has lobby but not in game - clear and go to selection
+        clearLobby();
+        navigate('/select-lobby');
+      } else {
+        // No lobby selected - go to lobby selection
+        navigate('/select-lobby');
+      }
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, lobbyId, game, player, navigate, clearLobby]);
 
   const handleSignIn = async () => {
     try {
@@ -24,30 +38,12 @@ function Home() {
     }
   };
 
-  const handleJoinGame = async () => {
-    if (!user || joining) return;
-    
-    setJoining(true);
-    try {
-      const player = await gameService.joinGame(user);
-      // If joined as spectator (late joiner), go directly to game
-      if (player.isSpectator) {
-        navigate('/game');
-      } else {
-        navigate('/lobby');
-      }
-    } catch (error) {
-      console.error('Join game error:', error);
-      setJoining(false);
-    }
-  };
-
-  if (authLoading || joining) {
+  if (authLoading) {
     return (
       <div className="home-container">
         <div className="loading-state">
           <div className="spinner"></div>
-          <p>{joining ? 'Joining game...' : 'Loading...'}</p>
+          <p>Loading...</p>
         </div>
       </div>
     );
@@ -59,7 +55,7 @@ function Home() {
         <h1 className="home-title">🎭 Mafia Game</h1>
         <p className="home-subtitle">A game of deception</p>
 
-        {!user ? (
+        {!user && (
           <>
             <button className="btn-primary" onClick={handleSignIn}>
               🔐 Sign in with Google
@@ -68,13 +64,9 @@ function Home() {
               How to Play
             </button>
           </>
-        ) : (
-          <button className="btn-primary" onClick={handleJoinGame}>
-            Join Game
-          </button>
         )}
 
-        <div className="version">v1.0.0</div>
+        <div className="version">v2.0.0 - Multi-Lobby</div>
       </div>
 
       {showHowToPlay && (
@@ -96,8 +88,8 @@ function Home() {
 
               <h3>Game Flow</h3>
               <ol>
-                <li>Players join the lobby</li>
-                <li>Host starts the game</li>
+                <li>Choose a lobby to join</li>
+                <li>Wait for host to start the game</li>
                 <li>Roles are assigned secretly</li>
                 <li><strong>Night Phase:</strong> Special roles act</li>
                 <li><strong>Day Phase:</strong> Discussion and voting</li>
@@ -115,4 +107,3 @@ function Home() {
 }
 
 export default Home;
-

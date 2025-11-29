@@ -2,14 +2,16 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
-import { gameService } from '../services/gameService';
+import { gameService, LOBBIES } from '../services/gameService';
 import GameSettings from '../components/GameSettings';
 import './Lobby.css';
 
 function Lobby() {
   const { user, logout } = useAuth();
-  const { game, player, isHost, loading } = useGame();
+  const { game, player, isHost, loading, lobbyId, clearLobby } = useGame();
   const navigate = useNavigate();
+
+  const lobbyInfo = LOBBIES.find(l => l.id === lobbyId);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -18,23 +20,29 @@ function Lobby() {
   }, [user, loading, navigate]);
 
   useEffect(() => {
+    if (!loading && !lobbyId) {
+      navigate('/select-lobby');
+    }
+  }, [loading, lobbyId, navigate]);
+
+  useEffect(() => {
     if (game?.status === 'playing') {
       navigate('/game');
     }
   }, [game, navigate]);
 
   useEffect(() => {
-    if (!loading && (!game || !player)) {
+    if (!loading && lobbyId && (!game || !player)) {
       const timer = setTimeout(() => {
-        navigate('/');
+        navigate('/select-lobby');
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [loading, game, player, navigate]);
+  }, [loading, lobbyId, game, player, navigate]);
 
   const handleStartGame = async () => {
     try {
-      await gameService.startGame(user.uid);
+      await gameService.startGame(user.uid, lobbyId);
     } catch (error) {
       alert(error.message || 'Failed to start game');
     }
@@ -44,7 +52,7 @@ function Lobby() {
     if (!confirm('Are you sure you want to kick this player?')) return;
     
     try {
-      await gameService.kickPlayer(user.uid, targetUserId);
+      await gameService.kickPlayer(user.uid, targetUserId, lobbyId);
     } catch (error) {
       alert(error.message || 'Failed to kick player');
     }
@@ -54,11 +62,24 @@ function Lobby() {
     if (!confirm('Are you sure you want to leave?')) return;
     
     try {
-      await gameService.leaveGame(user.uid);
+      await gameService.leaveGame(user.uid, lobbyId);
+      clearLobby();
+      navigate('/select-lobby');
+    } catch (error) {
+      console.error('Leave game error:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (!confirm('Are you sure you want to sign out?')) return;
+    
+    try {
+      await gameService.leaveGame(user.uid, lobbyId);
+      clearLobby();
       await logout();
       navigate('/');
     } catch (error) {
-      console.error('Leave game error:', error);
+      console.error('Logout error:', error);
     }
   };
 
@@ -88,6 +109,12 @@ function Lobby() {
   return (
     <div className="lobby-container">
       <div className="lobby-content">
+        <div className="lobby-header">
+          <span className="lobby-badge">
+            {lobbyInfo?.icon} {lobbyInfo?.name}
+          </span>
+        </div>
+        
         <h1 className="lobby-title">Waiting for Players</h1>
         
         <div className="player-count">
@@ -151,9 +178,14 @@ function Lobby() {
           </div>
         )}
 
-        <button className="btn-leave" onClick={handleLeaveGame}>
-          Leave Game
-        </button>
+        <div className="lobby-actions">
+          <button className="btn-leave" onClick={handleLeaveGame}>
+            Change Lobby
+          </button>
+          <button className="btn-logout" onClick={handleLogout}>
+            Sign Out
+          </button>
+        </div>
       </div>
     </div>
   );

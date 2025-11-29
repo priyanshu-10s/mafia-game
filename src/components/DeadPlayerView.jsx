@@ -1,21 +1,34 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useGame } from '../contexts/GameContext';
 import { gameService } from '../services/gameService';
 import './DeadPlayerView.css';
 
 function DeadPlayerView({ game, player }) {
   const { user, logout } = useAuth();
+  const { lobbyId, clearLobby } = useGame();
   const navigate = useNavigate();
 
   const alivePlayers = Object.values(game.players || {}).filter(p => p.isAlive).sort((a, b) => a.name.localeCompare(b.name));
 
-  const handleLeave = async () => {
+  const handleChangeLobby = async () => {
     try {
-      await gameService.leaveGame(user.uid);
+      await gameService.leaveGame(user.uid, lobbyId);
+      clearLobby();
+      navigate('/select-lobby');
+    } catch (error) {
+      console.error('Leave error:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await gameService.leaveGame(user.uid, lobbyId);
+      clearLobby();
       await logout();
       navigate('/');
     } catch (error) {
-      console.error('Leave error:', error);
+      console.error('Logout error:', error);
     }
   };
 
@@ -67,13 +80,17 @@ function DeadPlayerView({ game, player }) {
           </div>
         </div>
 
-        <button className="btn-leave" onClick={handleLeave}>
-          Leave Game
-        </button>
+        <div className="dead-actions">
+          <button className="btn-change-lobby" onClick={handleChangeLobby}>
+            Change Lobby
+          </button>
+          <button className="btn-leave" onClick={handleLogout}>
+            Sign Out
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
 export default DeadPlayerView;
-
