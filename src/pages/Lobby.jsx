@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
+import { useHeartbeat } from '../hooks/useHeartbeat';
 import { gameService, LOBBIES } from '../services/gameService';
 import GameSettings from '../components/GameSettings';
 import './Lobby.css';
@@ -10,6 +11,9 @@ function Lobby() {
   const { user, logout } = useAuth();
   const { game, player, isHost, loading, lobbyId, clearLobby } = useGame();
   const navigate = useNavigate();
+  
+  // Send heartbeat to track activity
+  useHeartbeat();
 
   const lobbyInfo = LOBBIES.find(l => l.id === lobbyId);
 

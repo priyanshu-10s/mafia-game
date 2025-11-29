@@ -1,5 +1,10 @@
 import { doc, setDoc, updateDoc, deleteDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { checkWinCondition } from '../utils/gameLogic';
+
+// Staleness threshold from environment variable (default: 30 minutes)
+const STALE_TIMEOUT_MINUTES = parseInt(import.meta.env.VITE_STALE_TIMEOUT_MINUTES) || 30;
+const STALE_THRESHOLD_MS = STALE_TIMEOUT_MINUTES * 60 * 1000;
 
 // Available lobbies
 export const LOBBIES = [
@@ -33,11 +38,135 @@ export const gameService = {
     if (lobbyId) {
       await setDoc(userLobbyRef, {
         lobbyId: lobbyId,
-        joinedAt: serverTimestamp()
+        joinedAt: serverTimestamp(),
+        lastActive: serverTimestamp()
       });
     } else {
       await deleteDoc(userLobbyRef);
     }
+  },
+
+  // Send heartbeat to update lastActive timestamp
+  async sendHeartbeat(userId) {
+    if (!userId) return;
+    
+    const userLobbyRef = doc(db, 'userLobbies', userId);
+    try {
+      const userLobbySnap = await getDoc(userLobbyRef);
+      if (userLobbySnap.exists()) {
+        await updateDoc(userLobbyRef, {
+          lastActive: serverTimestamp()
+        });
+      }
+    } catch (error) {
+      console.error('Heartbeat error:', error);
+    }
+  },
+
+  // Cleanup stale players from a lobby
+  async cleanupStalePlayers(lobbyId) {
+    if (!lobbyId) return { removed: [], markedDead: [] };
+
+    const gameRef = doc(db, 'games', lobbyId);
+    const gameSnap = await getDoc(gameRef);
+
+    if (!gameSnap.exists()) return { removed: [], markedDead: [] };
+
+    const game = gameSnap.data();
+    const players = game.players || {};
+    const playerIds = Object.keys(players);
+    
+    if (playerIds.length === 0) return { removed: [], markedDead: [] };
+
+    const now = Date.now();
+    const stalePlayerIds = [];
+
+    // Check each player's lastActive timestamp
+    for (const odMPNq9xxxxxxxJy5Ts1 of playerIds) {
+      const userLobbyRef = doc(db, 'userLobbies', odMPNq9xxxxxxxJy5Ts1);
+      const userLobbySnap = await getDoc(userLobbyRef);
+
+      if (userLobbySnap.exists()) {
+        const lastActive = userLobbySnap.data().lastActive?.toMillis() || 0;
+        if (now - lastActive > STALE_THRESHOLD_MS) {
+          stalePlayerIds.push(odMPNq9xxxxxxxJy5Ts1);
+        }
+      } else {
+        // No userLobby doc means they're definitely stale
+        stalePlayerIds.push(odMPNq9xxxxxxxJy5Ts1);
+      }
+    }
+
+    if (stalePlayerIds.length === 0) return { removed: [], markedDead: [] };
+
+    const removed = [];
+    const markedDead = [];
+    const updatedPlayers = { ...players };
+
+    if (game.status === 'playing') {
+      // During active game: mark stale players as dead (not removed)
+      for (const odMPNq9xxxxxxxJy5Ts1 of stalePlayerIds) {
+        if (updatedPlayers[odMPNq9xxxxxxxJy5Ts1]?.isAlive) {
+          updatedPlayers[odMPNq9xxxxxxxJy5Ts1] = {
+            ...updatedPlayers[odMPNq9xxxxxxxJy5Ts1],
+            isAlive: false,
+            eliminatedReason: 'inactive'
+          };
+          markedDead.push(odMPNq9xxxxxxxJy5Ts1);
+        }
+        // Clear their userLobby tracking
+        await this.clearUserLobby(odMPNq9xxxxxxxJy5Ts1);
+      }
+
+      // Check if ALL players are now dead/stale
+      const anyAlive = Object.values(updatedPlayers).some(p => p.isAlive);
+      
+      if (!anyAlive) {
+        // Everyone is dead/stale - delete game so next joiner starts fresh
+        await deleteDoc(gameRef);
+        console.log(`Game ${lobbyId} deleted - all players were stale`);
+      } else {
+        // Check if game should end after removing stale players
+        const winner = checkWinCondition({ ...game, players: updatedPlayers });
+
+        if (winner) {
+          await updateDoc(gameRef, {
+            players: updatedPlayers,
+            status: 'ended',
+            winner,
+            phase: 'ended'
+          });
+        } else {
+          await updateDoc(gameRef, { players: updatedPlayers });
+        }
+      }
+    } else {
+      // In lobby or ended status: remove players completely
+      for (const odMPNq9xxxxxxxJy5Ts1 of stalePlayerIds) {
+        delete updatedPlayers[odMPNq9xxxxxxxJy5Ts1];
+        removed.push(odMPNq9xxxxxxxJy5Ts1);
+        await this.clearUserLobby(odMPNq9xxxxxxxJy5Ts1);
+      }
+
+      // Handle case where all players are removed
+      if (Object.keys(updatedPlayers).length === 0) {
+        await deleteDoc(gameRef);
+      } else {
+        // Transfer host if host was removed
+        const updates = { players: updatedPlayers };
+        if (stalePlayerIds.includes(game.hostId)) {
+          const newHostId = Object.keys(updatedPlayers)[0];
+          updates.hostId = newHostId;
+        }
+        await updateDoc(gameRef, updates);
+      }
+    }
+
+    if (removed.length > 0 || markedDead.length > 0) {
+      console.log(`Cleanup in ${lobbyId}: removed ${removed.length}, marked dead ${markedDead.length}`);
+    }
+
+    return { removed, markedDead };
   },
 
   // Clear user's lobby tracking
@@ -117,6 +246,9 @@ export const gameService = {
       await this.leaveGame(user.uid, currentLobby);
     }
 
+    // Cleanup stale players before joining
+    await this.cleanupStalePlayers(lobbyId);
+
     const gameRef = doc(db, 'games', lobbyId);
     const gameSnap = await getDoc(gameRef);
 
@@ -176,7 +308,8 @@ export const gameService = {
     const userLobbyRef = doc(db, 'userLobbies', user.uid);
     await setDoc(userLobbyRef, {
       lobbyId: lobbyId,
-      joinedAt: serverTimestamp()
+      joinedAt: serverTimestamp(),
+      lastActive: serverTimestamp()
     });
 
     // Store the selected lobby locally

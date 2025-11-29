@@ -52,6 +52,7 @@ Create `.env` file with your Firebase config:
 - `VITE_FIREBASE_MESSAGING_SENDER_ID`
 - `VITE_FIREBASE_APP_ID`
 - `VITE_ADMIN_PASSWORD`
+- `VITE_STALE_TIMEOUT_MINUTES` - Minutes before idle players are removed (default: 30)
 
 ## 🎮 Features
 
@@ -78,7 +79,7 @@ mafia-game-project/
 
 ## 🔥 Firebase Setup
 
-See `design-docs/FIREBASE_SETUP.md` for complete Firebase setup instructions.
+See `FIREBASE_SETUP.md` for complete Firebase setup instructions.
 
 ## 📄 License
 

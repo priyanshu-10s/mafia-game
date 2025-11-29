@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
 import { useGamePhaseProcessor } from '../hooks/useGamePhaseProcessor';
+import { useHeartbeat } from '../hooks/useHeartbeat';
 import PhaseTransition from '../components/PhaseTransition';
 import RoleReveal from '../components/RoleReveal';
 import NightPhase from '../components/NightPhase';
@@ -25,6 +26,9 @@ function Game() {
   const [lastRound, setLastRound] = useState(null);
   
   useGamePhaseProcessor();
+  
+  // Send heartbeat to track activity
+  useHeartbeat();
 
   useEffect(() => {
     if (!loading && !user) {
