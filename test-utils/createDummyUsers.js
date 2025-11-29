@@ -13,6 +13,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// Available lobbies (same as in gameService)
+export const LOBBIES = [
+  { id: 'lobby_1', name: 'Lobby 1', icon: '🎭' },
+  { id: 'lobby_2', name: 'Lobby 2', icon: '🎪' },
+  { id: 'lobby_3', name: 'Lobby 3', icon: '🎯' }
+];
+
 const DUMMY_USERS = [
   {
     uid: 'dummy_user_1',
@@ -58,8 +65,8 @@ const DUMMY_USERS = [
   }
 ];
 
-export async function createDummyUsers() {
-  const gameRef = doc(db, 'games', 'current_game');
+export async function createDummyUsers(lobbyId = 'lobby_1') {
+  const gameRef = doc(db, 'games', lobbyId);
   const gameSnap = await getDoc(gameRef);
 
   let players = {};
@@ -71,6 +78,7 @@ export async function createDummyUsers() {
       status: 'lobby',
       hostId: null,
       players: {},
+      lobbyId: lobbyId,
       settings: {
         numMafia: 2,
         hasDetective: true,
@@ -110,16 +118,16 @@ export async function createDummyUsers() {
 
   await updateDoc(gameRef, updates);
 
-  console.log('✅ Dummy users created:', DUMMY_USERS.map(u => u.name).join(', '));
+  console.log(`✅ Dummy users created in ${lobbyId}:`, DUMMY_USERS.map(u => u.name).join(', '));
   return DUMMY_USERS;
 }
 
-export async function dummyUsersVote() {
-  const gameRef = doc(db, 'games', 'current_game');
+export async function dummyUsersVote(lobbyId = 'lobby_1') {
+  const gameRef = doc(db, 'games', lobbyId);
   const gameSnap = await getDoc(gameRef);
 
   if (!gameSnap.exists()) {
-    throw new Error('No game found');
+    throw new Error('No game found in ' + lobbyId);
   }
 
   const game = gameSnap.data();
@@ -153,7 +161,7 @@ export async function dummyUsersVote() {
     });
 
     await updateDoc(gameRef, { actions });
-    console.log(`✅ ${aliveDummies.length} dummy users voted (night)`);
+    console.log(`✅ ${aliveDummies.length} dummy users voted (night) in ${lobbyId}`);
     
   } else if (phase === 'day') {
     const votes = { ...(game.votes || {}) };
@@ -172,7 +180,7 @@ export async function dummyUsersVote() {
     });
 
     await updateDoc(gameRef, { votes });
-    console.log(`✅ ${aliveDummies.length} dummy users voted (day)`);
+    console.log(`✅ ${aliveDummies.length} dummy users voted (day) in ${lobbyId}`);
   } else {
     throw new Error(`Cannot vote during ${phase || 'lobby'} phase`);
   }
@@ -180,12 +188,12 @@ export async function dummyUsersVote() {
   return aliveDummies.length;
 }
 
-export async function removeDummyUsers() {
-  const gameRef = doc(db, 'games', 'current_game');
+export async function removeDummyUsers(lobbyId = 'lobby_1') {
+  const gameRef = doc(db, 'games', lobbyId);
   const gameSnap = await getDoc(gameRef);
 
   if (!gameSnap.exists()) {
-    console.log('No game found');
+    console.log('No game found in ' + lobbyId);
     return;
   }
 
@@ -209,8 +217,7 @@ export async function removeDummyUsers() {
   }
 
   await updateDoc(gameRef, updates);
-  console.log('✅ Dummy users removed');
+  console.log(`✅ Dummy users removed from ${lobbyId}`);
 }
 
 export { DUMMY_USERS };
-

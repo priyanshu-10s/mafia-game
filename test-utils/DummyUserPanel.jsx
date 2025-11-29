@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { createDummyUsers, removeDummyUsers, dummyUsersVote, DUMMY_USERS } from './createDummyUsers';
+import { createDummyUsers, removeDummyUsers, dummyUsersVote, DUMMY_USERS, LOBBIES } from './createDummyUsers';
 import './DummyUserPanel.css';
 
 function DummyUserPanel() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [selectedLobby, setSelectedLobby] = useState('lobby_1');
 
   const handleCreate = async () => {
     setLoading(true);
     setMessage('');
     try {
-      await createDummyUsers();
-      setMessage(`✅ Created ${DUMMY_USERS.length} dummy users`);
+      await createDummyUsers(selectedLobby);
+      setMessage(`✅ Created ${DUMMY_USERS.length} dummy users in ${getLobbyName(selectedLobby)}`);
     } catch (error) {
       setMessage(`❌ Error: ${error.message}`);
     }
@@ -19,13 +20,13 @@ function DummyUserPanel() {
   };
 
   const handleRemove = async () => {
-    if (!confirm('Remove all dummy users?')) return;
+    if (!confirm(`Remove all dummy users from ${getLobbyName(selectedLobby)}?`)) return;
     
     setLoading(true);
     setMessage('');
     try {
-      await removeDummyUsers();
-      setMessage('✅ Dummy users removed');
+      await removeDummyUsers(selectedLobby);
+      setMessage(`✅ Dummy users removed from ${getLobbyName(selectedLobby)}`);
     } catch (error) {
       setMessage(`❌ Error: ${error.message}`);
     }
@@ -36,20 +37,40 @@ function DummyUserPanel() {
     setLoading(true);
     setMessage('');
     try {
-      const count = await dummyUsersVote();
-      setMessage(`✅ ${count} dummy users voted randomly`);
+      const count = await dummyUsersVote(selectedLobby);
+      setMessage(`✅ ${count} dummy users voted randomly in ${getLobbyName(selectedLobby)}`);
     } catch (error) {
       setMessage(`❌ Error: ${error.message}`);
     }
     setLoading(false);
   };
 
+  const getLobbyName = (lobbyId) => {
+    const lobby = LOBBIES.find(l => l.id === lobbyId);
+    return lobby ? `${lobby.icon} ${lobby.name}` : lobbyId;
+  };
+
   return (
     <div className="dummy-panel">
       <h2>🧪 Test Utilities</h2>
       <p className="dummy-description">
-        Create dummy users for local testing. These users will be added to the current game.
+        Create dummy users for local testing. Select a lobby and add test users.
       </p>
+
+      <div className="lobby-selector">
+        <label>Select Lobby:</label>
+        <select 
+          value={selectedLobby} 
+          onChange={(e) => setSelectedLobby(e.target.value)}
+          className="lobby-select"
+        >
+          {LOBBIES.map(lobby => (
+            <option key={lobby.id} value={lobby.id}>
+              {lobby.icon} {lobby.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="dummy-users-list">
         <h3>Dummy Users:</h3>
@@ -103,4 +124,3 @@ function DummyUserPanel() {
 }
 
 export default DummyUserPanel;
-
