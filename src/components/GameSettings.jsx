@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gameService } from '../services/gameService';
 import './GameSettings.css';
@@ -18,6 +18,16 @@ function GameSettings({ game }) {
   });
 
   const players = Object.values(game.players || {}).sort((a, b) => a.name.localeCompare(b.name));
+  
+  // Max mafia is 1/3 of total players (same logic as gameService.assignRoles)
+  const maxMafia = Math.max(1, Math.floor(players.length / 3));
+  
+  // Auto-adjust if current selection exceeds max (e.g., when players leave)
+  useEffect(() => {
+    if (settings.numMafia > maxMafia) {
+      setSettings(prev => ({ ...prev, numMafia: maxMafia }));
+    }
+  }, [maxMafia, settings.numMafia]);
   
   const handleSave = async () => {
     try {
@@ -69,16 +79,22 @@ function GameSettings({ game }) {
               <div className="setting-item">
                 <label>Number of Mafia</label>
                 <div className="mafia-buttons">
-                  {[1, 2, 3, 4, 5].map(num => (
-                    <button
-                      key={num}
-                      className={settings.numMafia === num ? 'active' : ''}
-                      onClick={() => setSettings({...settings, numMafia: num})}
-                    >
-                      {num}
-                    </button>
-                  ))}
+                  {[1, 2, 3, 4, 5].map(num => {
+                    const isDisabled = num > maxMafia;
+                    return (
+                      <button
+                        key={num}
+                        className={`${settings.numMafia === num ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}
+                        onClick={() => !isDisabled && setSettings({...settings, numMafia: num})}
+                        disabled={isDisabled}
+                        title={isDisabled ? `Need at least ${num * 3} players` : ''}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
                 </div>
+                <span className="setting-hint">Max {maxMafia} mafia for {players.length} players</span>
               </div>
 
               <div className="setting-item">

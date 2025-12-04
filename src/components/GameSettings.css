@@ -93,6 +93,28 @@
   border-color: #8B5CF6;
 }
 
+.mafia-buttons button.disabled,
+.mafia-buttons button:disabled {
+  background: #1F2937;
+  color: #4B5563;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.mafia-buttons button.disabled:hover,
+.mafia-buttons button:disabled:hover {
+  background: #1F2937;
+  transform: none;
+}
+
+.setting-hint {
+  display: block;
+  color: #9CA3AF;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;
