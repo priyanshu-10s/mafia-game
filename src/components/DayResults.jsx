@@ -78,9 +78,11 @@ function DayResults({ game, eliminatedPlayer, voteBreakdown, onContinue }) {
           </ul>
         </div>
 
-        <div className="remaining-info">
-          Remaining: {aliveMafia} Mafia, {aliveVillagers} Villagers
-        </div>
+        {game.settings?.revealOnDeath && (
+          <div className="remaining-info">
+            Remaining: {aliveMafia} Mafia, {aliveVillagers} Villagers
+          </div>
+        )}
 
         <button className="btn-continue" onClick={handleContinue}>
           Continue to Night
