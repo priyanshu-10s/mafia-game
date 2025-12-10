@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
@@ -11,6 +11,7 @@ import NightResults from '../components/NightResults';
 import DayPhase from '../components/DayPhase';
 import DayResults from '../components/DayResults';
 import DeadPlayerView from '../components/DeadPlayerView';
+import DeathReveal from '../components/DeathReveal';
 import GameEnd from '../components/GameEnd';
 import './Game.css';
 
@@ -22,8 +23,11 @@ function Game() {
   const [showTransition, setShowTransition] = useState(false);
   const [showNightResults, setShowNightResults] = useState(false);
   const [showDayResults, setShowDayResults] = useState(false);
+  const [showDeathReveal, setShowDeathReveal] = useState(false);
+  const [deathCause, setDeathCause] = useState(null);
   const [lastPhase, setLastPhase] = useState(null);
   const [lastRound, setLastRound] = useState(null);
+  const wasAliveRef = useRef(true);
   
   useGamePhaseProcessor();
   
@@ -70,6 +74,28 @@ function Game() {
     setLastRound(game.round);
   }, [game?.phase, game?.round, lastPhase, lastRound]);
 
+  // Detect when player just died
+  useEffect(() => {
+    if (!player) return;
+    
+    // Check if player was alive before and is now dead
+    if (wasAliveRef.current && !player.isAlive && !player.isSpectator) {
+      // Determine cause of death
+      if (game?.lastKilledId === user?.uid) {
+        setDeathCause('mafia');
+      } else if (game?.lastEliminatedId === user?.uid) {
+        setDeathCause('vote');
+      } else if (player.eliminatedReason === 'inactive') {
+        setDeathCause('inactive');
+      } else {
+        setDeathCause('unknown');
+      }
+      setShowDeathReveal(true);
+    }
+    
+    wasAliveRef.current = player.isAlive;
+  }, [player?.isAlive, player?.isSpectator, player?.eliminatedReason, game?.lastKilledId, game?.lastEliminatedId, user?.uid]);
+
   if (loading) {
     return (
       <div className="game-container">
@@ -96,6 +122,16 @@ function Game() {
   }
 
   if (!player.isAlive) {
+    // Show death reveal first if player just died
+    if (showDeathReveal) {
+      return (
+        <DeathReveal 
+          player={player}
+          eliminatedBy={deathCause}
+          onContinue={() => setShowDeathReveal(false)}
+        />
+      );
+    }
     return <DeadPlayerView game={game} player={player} />;
   }
 
