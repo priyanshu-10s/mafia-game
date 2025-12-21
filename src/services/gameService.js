@@ -1,6 +1,7 @@
 import { doc, setDoc, updateDoc, deleteDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { checkWinCondition } from '../utils/gameLogic';
+import { getServerTime } from '../utils/serverTime';
 
 // Staleness threshold from environment variable (default: 30 minutes)
 const STALE_TIMEOUT_MINUTES = parseInt(import.meta.env.VITE_STALE_TIMEOUT_MINUTES) || 30;
@@ -78,7 +79,7 @@ export const gameService = {
     
     if (playerIds.length === 0) return { removed: [], markedDead: [] };
 
-    const now = Date.now();
+    const now = getServerTime();
     const stalePlayerIds = [];
 
     // Check each player's lastActive timestamp
@@ -423,7 +424,7 @@ export const gameService = {
       };
     });
 
-    const nightEndTime = Date.now() + ((gameData.settings?.nightTimer || 1) * 60 * 1000);
+    const nightEndTime = getServerTime() + ((gameData.settings?.nightTimer || 1) * 60 * 1000);
 
     await updateDoc(gameRef, {
       status: 'playing',
@@ -432,7 +433,7 @@ export const gameService = {
       players: playersWithRoles,
       actions: {},
       votes: {},
-      nightStartTime: Date.now(),
+      nightStartTime: getServerTime(),
       nightEndTime
     });
   },

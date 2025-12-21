@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext';
 import { GameProvider } from './contexts/GameContext';
 import { preloadSounds } from './utils/sounds';
+import { initServerTime } from './utils/serverTime';
 import Home from './pages/Home';
 import LobbySelect from './pages/LobbySelect';
 import Lobby from './pages/Lobby';
@@ -16,6 +17,8 @@ function App() {
   useEffect(() => {
     // Preload sounds for faster playback
     preloadSounds();
+    // Initialize server time offset for accurate phase timing
+    initServerTime();
   }, []);
 
   return (

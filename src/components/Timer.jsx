@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getServerTime } from '../utils/serverTime';
 import './Timer.css';
 
 function Timer({ endTime, onExpire }) {
@@ -11,7 +12,7 @@ function Timer({ endTime, onExpire }) {
     }
 
     const updateTimer = () => {
-      const remaining = Math.max(0, endTime - Date.now());
+      const remaining = Math.max(0, endTime - getServerTime());
       setTimeLeft(remaining);
       
       if (remaining === 0 && onExpire) {

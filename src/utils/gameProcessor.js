@@ -2,6 +2,7 @@ import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { processNightPhase, processDayPhase, checkWinCondition, shouldEndPhaseEarly } from './gameLogic';
 import { getSelectedLobby } from '../services/gameService';
+import { getServerTime } from './serverTime';
 
 export async function processGamePhase(lobbyId) {
   // Use provided lobbyId or fall back to selected lobby
@@ -29,7 +30,7 @@ export async function processGamePhase(lobbyId) {
 
   if (game.phase === 'night') {
     const allActed = shouldEndPhaseEarly(game, 'night');
-    const timerExpired = game.nightEndTime && Date.now() > game.nightEndTime;
+    const timerExpired = game.nightEndTime && getServerTime() > game.nightEndTime;
     
     if (allActed || timerExpired) {
       const { killedId } = processNightPhase(game);
@@ -56,7 +57,7 @@ export async function processGamePhase(lobbyId) {
         return;
       }
 
-      const dayEndTime = Date.now() + ((game.settings?.dayTimer || 5) * 60 * 1000);
+      const dayEndTime = getServerTime() + ((game.settings?.dayTimer || 5) * 60 * 1000);
 
       await updateDoc(gameRef, {
         phase: 'day',
@@ -64,14 +65,14 @@ export async function processGamePhase(lobbyId) {
         lastActions: game.actions,
         actions: {},
         votes: {},
-        dayStartTime: Date.now(),
+        dayStartTime: getServerTime(),
         dayEndTime,
         lastKilledId: killedId
       });
     }
   } else if (game.phase === 'day') {
     const allVoted = shouldEndPhaseEarly(game, 'day');
-    const timerExpired = game.dayEndTime && Date.now() > game.dayEndTime;
+    const timerExpired = game.dayEndTime && getServerTime() > game.dayEndTime;
     
     if (allVoted || timerExpired) {
       const eliminatedId = processDayPhase(game);
@@ -98,7 +99,7 @@ export async function processGamePhase(lobbyId) {
         return;
       }
 
-      const nightEndTime = Date.now() + ((game.settings?.nightTimer || 1) * 60 * 1000);
+      const nightEndTime = getServerTime() + ((game.settings?.nightTimer || 1) * 60 * 1000);
 
       await updateDoc(gameRef, {
         phase: 'night',
@@ -107,7 +108,7 @@ export async function processGamePhase(lobbyId) {
         actions: {},
         lastVotes: game.votes,
         votes: {},
-        nightStartTime: Date.now(),
+        nightStartTime: getServerTime(),
         nightEndTime,
         lastEliminatedId: eliminatedId
       });
