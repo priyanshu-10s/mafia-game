@@ -158,6 +158,14 @@ export async function dummyUsersVote(lobbyId = 'lobby_1') {
     });
 
     await updateDoc(gameRef, { actions });
+    
+    // Trigger phase processing (same as submitAction)
+    setTimeout(() => {
+      import('../src/utils/gameProcessor').then(({ processGamePhase }) => {
+        processGamePhase(lobbyId);
+      });
+    }, 1000);
+    
     console.log(`✅ ${aliveDummies.length} dummy users voted (night) in ${lobbyId}`);
     
   } else if (phase === 'day') {
@@ -177,6 +185,14 @@ export async function dummyUsersVote(lobbyId = 'lobby_1') {
     });
 
     await updateDoc(gameRef, { votes });
+    
+    // Trigger phase processing (same as submitVote)
+    setTimeout(() => {
+      import('../src/utils/gameProcessor').then(({ processGamePhase }) => {
+        processGamePhase(lobbyId);
+      });
+    }, 1000);
+    
     console.log(`✅ ${aliveDummies.length} dummy users voted (day) in ${lobbyId}`);
   } else {
     throw new Error(`Cannot vote during ${phase || 'lobby'} phase`);
