@@ -1,4 +1,4 @@
-import { doc, setDoc, updateDoc, deleteDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, getDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { checkWinCondition } from '../utils/gameLogic';
 import { getServerTime } from '../utils/serverTime';
@@ -509,32 +509,35 @@ export const gameService = {
     if (!lobbyId) throw new Error('No lobby selected');
 
     const gameRef = doc(db, 'games', lobbyId);
-    const gameSnap = await getDoc(gameRef);
-
-    if (!gameSnap.exists()) {
-      throw new Error('Game not found');
-    }
-
-    const gameData = gameSnap.data();
-    const player = gameData.players[userId];
-
-    if (!player || !player.isAlive) {
-      throw new Error('Player not in game or dead');
-    }
-
-    const actions = { ...(gameData.actions || {}) };
     
-    if (targetId === 'skip') {
-      delete actions[userId];
-    } else {
-      actions[userId] = {
-        type: actionType,
-        targetId: targetId,
-        timestamp: serverTimestamp()
-      };
-    }
+    await runTransaction(db, async (transaction) => {
+      const gameSnap = await transaction.get(gameRef);
 
-    await updateDoc(gameRef, { actions });
+      if (!gameSnap.exists()) {
+        throw new Error('Game not found');
+      }
+
+      const gameData = gameSnap.data();
+      const player = gameData.players[userId];
+
+      if (!player || !player.isAlive) {
+        throw new Error('Player not in game or dead');
+      }
+
+      const actions = { ...(gameData.actions || {}) };
+      
+      if (targetId === 'skip') {
+        delete actions[userId];
+      } else {
+        actions[userId] = {
+          type: actionType,
+          targetId: targetId,
+          timestamp: Date.now() // Use Date.now() in transactions (serverTimestamp not allowed)
+        };
+      }
+
+      transaction.update(gameRef, { actions });
+    });
     
     setTimeout(() => {
       import('../utils/gameProcessor').then(({ processGamePhase }) => {
@@ -548,31 +551,34 @@ export const gameService = {
     if (!lobbyId) throw new Error('No lobby selected');
 
     const gameRef = doc(db, 'games', lobbyId);
-    const gameSnap = await getDoc(gameRef);
-
-    if (!gameSnap.exists()) {
-      throw new Error('Game not found');
-    }
-
-    const gameData = gameSnap.data();
-    const player = gameData.players[userId];
-
-    if (!player || !player.isAlive) {
-      throw new Error('Player not in game or dead');
-    }
-
-    const votes = { ...(gameData.votes || {}) };
     
-    if (targetId === 'skip') {
-      delete votes[userId];
-    } else {
-      votes[userId] = {
-        targetId: targetId,
-        timestamp: serverTimestamp()
-      };
-    }
+    await runTransaction(db, async (transaction) => {
+      const gameSnap = await transaction.get(gameRef);
 
-    await updateDoc(gameRef, { votes });
+      if (!gameSnap.exists()) {
+        throw new Error('Game not found');
+      }
+
+      const gameData = gameSnap.data();
+      const player = gameData.players[userId];
+
+      if (!player || !player.isAlive) {
+        throw new Error('Player not in game or dead');
+      }
+
+      const votes = { ...(gameData.votes || {}) };
+      
+      if (targetId === 'skip') {
+        delete votes[userId];
+      } else {
+        votes[userId] = {
+          targetId: targetId,
+          timestamp: Date.now() // Use Date.now() in transactions (serverTimestamp not allowed)
+        };
+      }
+
+      transaction.update(gameRef, { votes });
+    });
     
     setTimeout(() => {
       import('../utils/gameProcessor').then(({ processGamePhase }) => {

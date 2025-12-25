@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, setLogLevel } from 'firebase/firestore';
 
 // Firebase configuration from environment variables
 const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
@@ -36,6 +36,12 @@ if (isConfigured) {
     auth = getAuth(app);
     db = getFirestore(app);
     googleProvider = new GoogleAuthProvider();
+
+    if (import.meta.env.PROD) {
+      setLogLevel('error'); 
+    } else {
+      setLogLevel('warn'); 
+    }
     
     console.log('✅ Firebase initialized successfully');
   } catch (error) {
