@@ -127,6 +127,7 @@ function Game() {
       return (
         <DeathReveal 
           player={player}
+          game={game}
           eliminatedBy={deathCause}
           onContinue={() => setShowDeathReveal(false)}
         />

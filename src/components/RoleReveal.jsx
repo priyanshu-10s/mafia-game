@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import sounds from '../utils/sounds';
+import { getPlayerRole } from '../utils/gameLogic';
 import './RoleReveal.css';
 
 const ROLE_INFO = {
@@ -27,12 +28,12 @@ const ROLE_INFO = {
 
 function RoleReveal({ game, player, onContinue }) {
   const [countdown, setCountdown] = useState(3);
-  const role = player.role;
+  const role = getPlayerRole(player, game);
   const roleInfo = ROLE_INFO[role] || ROLE_INFO.villager;
   
   const isMafia = role === 'mafia';
   const mafiaTeam = isMafia 
-    ? Object.values(game.players || {}).filter(p => p.role === 'mafia' && p.uid !== player.uid).sort((a, b) => a.name.localeCompare(b.name))
+    ? Object.values(game.players || {}).filter(p => getPlayerRole(p, game) === 'mafia' && p.uid !== player.uid).sort((a, b) => a.name.localeCompare(b.name))
     : [];
 
   const soundPlayed = useRef(false);

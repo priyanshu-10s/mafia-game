@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gameService } from '../services/gameService';
+import { getPlayerRole } from '../utils/gameLogic';
 import Timer from './Timer';
 import './NightPhase.css';
 
@@ -16,14 +17,17 @@ function NightPhase({ game, player }) {
   const [showRole, setShowRole] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState(null);
 
+  // Decrypt the player's role
+  const myRole = useMemo(() => getPlayerRole(player, game), [player, game]);
+
   const alivePlayers = Object.values(game.players || {})
     .filter(p => p.isAlive && p.uid !== user.uid)
     .sort((a, b) => a.name.localeCompare(b.name));
-  const roleInfo = ROLE_INFO[player.role] || ROLE_INFO.villager;
-  const isMafia = player.role === 'mafia';
+  const roleInfo = ROLE_INFO[myRole] || ROLE_INFO.villager;
+  const isMafia = myRole === 'mafia';
 
   const mafiaMembers = isMafia 
-    ? Object.values(game.players || {}).filter(p => p.role === 'mafia' && p.uid !== user.uid && p.isAlive)
+    ? Object.values(game.players || {}).filter(p => getPlayerRole(p, game) === 'mafia' && p.uid !== user.uid && p.isAlive)
     : [];
 
   const actions = game.actions || {};
@@ -44,13 +48,13 @@ function NightPhase({ game, player }) {
   const submitAction = useCallback(async (targetId) => {
     try {
       console.log('Submitting action:', targetId);
-      await gameService.submitAction(user.uid, player.role, targetId);
+      await gameService.submitAction(user.uid, myRole, targetId);
       console.log('Action saved successfully:', targetId);
     } catch (error) {
       console.error('Submit action error:', error);
       alert('Failed to save action: ' + error.message);
     }
-  }, [user.uid, player.role]);
+  }, [user.uid, myRole]);
 
   const handleSelectPlayer = async (playerId) => {
     setSelectedTarget(playerId);
@@ -102,7 +106,7 @@ function NightPhase({ game, player }) {
       return Object.entries(actions)
         .filter(([uid, action]) => {
           const p = game.players[uid];
-          return p?.role === 'mafia' && action.targetId === playerId;
+          return getPlayerRole(p, game) === 'mafia' && action.targetId === playerId;
         })
         .map(([uid]) => game.players[uid]?.color)
         .filter(Boolean);

@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import sounds from '../utils/sounds';
+import { getPlayerRole } from '../utils/gameLogic';
 import './NightResults.css';
 
 function NightResults({ game, killedPlayer, onContinue }) {
@@ -24,7 +25,11 @@ function NightResults({ game, killedPlayer, onContinue }) {
   const deadPlayers = Object.values(game.players || {}).filter(p => !p.isAlive).sort((a, b) => a.name.localeCompare(b.name));
   
   const currentPlayer = game.players?.[user?.uid];
-  const isDetective = currentPlayer?.role === 'detective';
+  const myRole = useMemo(() => getPlayerRole(currentPlayer, game), [currentPlayer, game]);
+  const isDetective = myRole === 'detective';
+  
+  // Get killed player's decrypted role
+  const killedRole = killedPlayer ? getPlayerRole(killedPlayer, game) : null;
   
   const getInvestigationResult = () => {
     if (!isDetective || !game.lastActions) return null;
@@ -35,10 +40,12 @@ function NightResults({ game, killedPlayer, onContinue }) {
     const investigatedPlayer = game.players[detectiveAction.targetId];
     if (!investigatedPlayer) return null;
     
+    const investigatedRole = getPlayerRole(investigatedPlayer, game);
+    
     return {
       name: investigatedPlayer.name,
-      role: investigatedPlayer.role,
-      isMafia: investigatedPlayer.role === 'mafia'
+      role: investigatedRole,
+      isMafia: investigatedRole === 'mafia'
     };
   };
   
@@ -63,8 +70,8 @@ function NightResults({ game, killedPlayer, onContinue }) {
             <>
               <div className="coffin-icon">⚰️</div>
               <h2 className="killed-name">{killedPlayer.name} was killed!</h2>
-              {game.settings?.revealOnDeath && (
-                <p className="killed-role">They were a {killedPlayer.role}</p>
+              {game.settings?.revealOnDeath && killedRole && (
+                <p className="killed-role">They were a {killedRole}</p>
               )}
             </>
           ) : (

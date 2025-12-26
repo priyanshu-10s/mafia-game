@@ -1,9 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import sounds from '../utils/sounds';
+import { getPlayerRole } from '../utils/gameLogic';
 import './DeathReveal.css';
 
-function DeathReveal({ player, eliminatedBy, onContinue }) {
+function DeathReveal({ player, game, eliminatedBy, onContinue }) {
   const soundPlayed = useRef(false);
+  
+  // Decrypt the player's role
+  const myRole = useMemo(() => getPlayerRole(player, game), [player, game]);
 
   useEffect(() => {
     if (!soundPlayed.current) {
@@ -37,9 +41,9 @@ function DeathReveal({ player, eliminatedBy, onContinue }) {
             {player.name}
           </span>
           <span className="player-role">
-            {player.role === 'mafia' ? '🔪 Mafia' : 
-             player.role === 'detective' ? '🔍 Detective' : 
-             player.role === 'doctor' ? '💉 Doctor' : 
+            {myRole === 'mafia' ? '🔪 Mafia' : 
+             myRole === 'detective' ? '🔍 Detective' : 
+             myRole === 'doctor' ? '💉 Doctor' : 
              '👤 Villager'}
           </span>
         </div>

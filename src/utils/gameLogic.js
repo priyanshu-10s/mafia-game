@@ -1,11 +1,23 @@
+import { decryptRole } from './encryption';
+
+/**
+ * Helper to get decrypted role for a player
+ */
+function getRole(player, lobbyId, gameStartTime) {
+  if (!player?.role) return null;
+  return decryptRole(player.role, lobbyId, gameStartTime);
+}
+
 export function processNightPhase(game) {
-  const alivePlayers = Object.values(game.players).filter(p => p.isAlive);
   const actions = game.actions || {};
+  const lobbyId = game.lobbyId;
+  const gameStartTime = game.gameStartTime;
   
   const mafiaVotes = {};
   Object.entries(actions).forEach(([uid, action]) => {
     const player = game.players[uid];
-    if (player && player.isAlive && player.role === 'mafia' && action.targetId && action.targetId !== 'skip') {
+    const role = getRole(player, lobbyId, gameStartTime);
+    if (player && player.isAlive && role === 'mafia' && action.targetId && action.targetId !== 'skip') {
       mafiaVotes[action.targetId] = (mafiaVotes[action.targetId] || 0) + 1;
     }
   });
@@ -16,7 +28,8 @@ export function processNightPhase(game) {
 
   const doctorSave = Object.entries(actions).find(([uid, action]) => {
     const player = game.players[uid];
-    return player && player.isAlive && player.role === 'doctor' && action.targetId && action.targetId !== 'skip';
+    const role = getRole(player, lobbyId, gameStartTime);
+    return player && player.isAlive && role === 'doctor' && action.targetId && action.targetId !== 'skip';
   })?.[1]?.targetId;
 
   const killedId = targetId && doctorSave !== targetId ? targetId : null;
@@ -55,9 +68,12 @@ export function processDayPhase(game) {
 }
 
 export function checkWinCondition(game) {
+  const lobbyId = game.lobbyId;
+  const gameStartTime = game.gameStartTime;
+  
   const alivePlayers = Object.values(game.players).filter(p => p.isAlive);
-  const aliveMafia = alivePlayers.filter(p => p.role === 'mafia');
-  const aliveVillagers = alivePlayers.filter(p => p.role !== 'mafia');
+  const aliveMafia = alivePlayers.filter(p => getRole(p, lobbyId, gameStartTime) === 'mafia');
+  const aliveVillagers = alivePlayers.filter(p => getRole(p, lobbyId, gameStartTime) !== 'mafia');
 
   if (aliveMafia.length === 0) {
     return 'villagers';
@@ -88,3 +104,11 @@ export function shouldEndPhaseEarly(game, phase) {
   return false;
 }
 
+/**
+ * Get the decrypted role for a specific player
+ * Exported for use in components
+ */
+export function getPlayerRole(player, game) {
+  if (!player?.role || !game) return null;
+  return decryptRole(player.role, game.lobbyId, game.gameStartTime);
+}

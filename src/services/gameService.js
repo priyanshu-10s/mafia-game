@@ -2,6 +2,7 @@ import { doc, setDoc, updateDoc, deleteDoc, getDoc, serverTimestamp, runTransact
 import { db } from '../firebase/config';
 import { checkWinCondition } from '../utils/gameLogic';
 import { getServerTime } from '../utils/serverTime';
+import { encryptRole } from '../utils/encryption';
 
 // Staleness threshold from environment variable (default: 30 minutes)
 const STALE_TIMEOUT_MINUTES = parseInt(import.meta.env.VITE_STALE_TIMEOUT_MINUTES) || 30;
@@ -416,15 +417,18 @@ export const gameService = {
     const roles = this.assignRoles(players, gameData.settings);
     const playersWithRoles = {};
     
+    // Use a consistent start time for encryption key
+    const gameStartTime = getServerTime();
+    
     players.forEach((player, index) => {
       playersWithRoles[player.uid] = {
         ...player,
-        role: roles[index],
+        role: encryptRole(roles[index], lobbyId, gameStartTime),
         isAlive: true
       };
     });
 
-    const nightEndTime = getServerTime() + ((gameData.settings?.nightTimer || 1) * 60 * 1000);
+    const nightEndTime = gameStartTime + ((gameData.settings?.nightTimer || 1) * 60 * 1000);
 
     await updateDoc(gameRef, {
       status: 'playing',
@@ -433,7 +437,8 @@ export const gameService = {
       players: playersWithRoles,
       actions: {},
       votes: {},
-      nightStartTime: getServerTime(),
+      gameStartTime, // Store for decryption
+      nightStartTime: gameStartTime,
       nightEndTime
     });
   },

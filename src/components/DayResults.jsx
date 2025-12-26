@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import sounds from '../utils/sounds';
+import { getPlayerRole } from '../utils/gameLogic';
 import './DayResults.css';
 
 function DayResults({ game, eliminatedPlayer, voteBreakdown, onContinue }) {
@@ -33,8 +34,12 @@ function DayResults({ game, eliminatedPlayer, voteBreakdown, onContinue }) {
     .filter(v => v.player)
     .sort((a, b) => b.count - a.count);
 
-  const aliveMafia = Object.values(game.players).filter(p => p.isAlive && p.role === 'mafia').length;
-  const aliveVillagers = Object.values(game.players).filter(p => p.isAlive && p.role !== 'mafia').length;
+  // Decrypt roles for counting (only used when revealOnDeath is true)
+  const aliveMafia = Object.values(game.players).filter(p => p.isAlive && getPlayerRole(p, game) === 'mafia').length;
+  const aliveVillagers = Object.values(game.players).filter(p => p.isAlive && getPlayerRole(p, game) !== 'mafia').length;
+  
+  // Get eliminated player's decrypted role
+  const eliminatedRole = eliminatedPlayer ? getPlayerRole(eliminatedPlayer, game) : null;
 
   return (
     <div className="day-results-container">
@@ -50,9 +55,9 @@ function DayResults({ game, eliminatedPlayer, voteBreakdown, onContinue }) {
                 {eliminatedPlayer.name} was eliminated
               </h2>
               <p className="vote-total">with {voteBreakdown[eliminatedPlayer.uid] || 0} votes</p>
-              {game.settings?.revealOnDeath && (
-                <div className={`role-reveal ${eliminatedPlayer.role === 'mafia' ? 'mafia' : 'villager'}`}>
-                  ⚖️ They were {eliminatedPlayer.role === 'mafia' ? 'MAFIA!' : `a ${eliminatedPlayer.role}`}
+              {game.settings?.revealOnDeath && eliminatedRole && (
+                <div className={`role-reveal ${eliminatedRole === 'mafia' ? 'mafia' : 'villager'}`}>
+                  ⚖️ They were {eliminatedRole === 'mafia' ? 'MAFIA!' : `a ${eliminatedRole}`}
                 </div>
               )}
             </>

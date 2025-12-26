@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
 import { gameService } from '../services/gameService';
+import { getPlayerRole } from '../utils/gameLogic';
 import sounds from '../utils/sounds';
 import './GameEnd.css';
 
@@ -20,14 +21,24 @@ function GameEnd({ game, player }) {
       soundPlayed.current = true;
     }
   }, []);
-  const isWinner = (player.role === 'mafia' && winner === 'mafia') ||
-                   (player.role !== 'mafia' && winner === 'villagers');
 
-  const allPlayers = Object.values(game.players || {}).sort((a, b) => a.name.localeCompare(b.name));
-  const mafiaPlayers = allPlayers.filter(p => p.role === 'mafia');
-  const detectivePlayers = allPlayers.filter(p => p.role === 'detective');
-  const doctorPlayers = allPlayers.filter(p => p.role === 'doctor');
-  const villagerPlayers = allPlayers.filter(p => p.role === 'villager');
+  // Decrypt player's role
+  const myRole = useMemo(() => getPlayerRole(player, game), [player, game]);
+  
+  const isWinner = (myRole === 'mafia' && winner === 'mafia') ||
+                   (myRole !== 'mafia' && winner === 'villagers');
+
+  // Decrypt all player roles for the reveal
+  const allPlayers = useMemo(() => {
+    return Object.values(game.players || {})
+      .map(p => ({ ...p, decryptedRole: getPlayerRole(p, game) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [game]);
+
+  const mafiaPlayers = allPlayers.filter(p => p.decryptedRole === 'mafia');
+  const detectivePlayers = allPlayers.filter(p => p.decryptedRole === 'detective');
+  const doctorPlayers = allPlayers.filter(p => p.decryptedRole === 'doctor');
+  const villagerPlayers = allPlayers.filter(p => p.decryptedRole === 'villager');
 
   const handlePlayAgain = async () => {
     try {
@@ -86,7 +97,7 @@ function GameEnd({ game, player }) {
 
         <div className={`your-result ${isWinner ? 'victory' : 'defeat'}`}>
           <span>{isWinner ? '🎉 Victory!' : '💀 Defeat'}</span>
-          <span className="your-role">You were {player.role}</span>
+          <span className="your-role">You were {myRole}</span>
         </div>
 
         <div className="final-roles">
