@@ -26,8 +26,8 @@ function LobbySelect() {
   useEffect(() => {
     if (!user || !db) return;
 
-    // Track how many lobbies have loaded for initial loading state
-    let loadedCount = 0;
+    // Track which lobbies have loaded (using Set to prevent double-counting)
+    const loadedLobbies = new Set();
     const totalLobbies = LOBBIES.length;
 
     // Set up real-time listeners for each lobby
@@ -35,8 +35,7 @@ function LobbySelect() {
       const gameRef = doc(db, 'games', lobby.id);
       
       return onSnapshot(gameRef, (snapshot) => {
-        loadedCount++;
-        
+        // Update lobby status
         if (!snapshot.exists()) {
           setLobbiesStatus(prev => ({
             ...prev,
@@ -61,14 +60,17 @@ function LobbySelect() {
           }));
         }
         
-        // Mark loading complete when all lobbies have reported
-        if (loadedCount >= totalLobbies) {
+        // Mark this lobby as loaded (only counts once per lobby)
+        loadedLobbies.add(lobby.id);
+        
+        // Mark loading complete when all lobbies have reported at least once
+        if (loadedLobbies.size >= totalLobbies) {
           setLoading(false);
         }
       }, (error) => {
         console.error(`Lobby ${lobby.id} listener error:`, error);
-        loadedCount++;
-        if (loadedCount >= totalLobbies) {
+        loadedLobbies.add(lobby.id);
+        if (loadedLobbies.size >= totalLobbies) {
           setLoading(false);
         }
       });

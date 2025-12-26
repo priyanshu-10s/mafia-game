@@ -10,14 +10,21 @@
 
 // Salt that makes the encryption unique to this app
 // Loaded from environment variable (set in .env locally, GitHub Secrets for CI/CD)
-const APP_SALT = import.meta.env.VITE_APP_SALT || 'default-dev-salt';
+const APP_SALT = import.meta.env.VITE_APP_SALT;
+
+// Warn if salt is not configured (roles won't decrypt correctly across deploys)
+if (!APP_SALT) {
+  console.warn('⚠️ VITE_APP_SALT not set! Using fallback salt. Add it to .env or GitHub Secrets.');
+}
+
+const EFFECTIVE_SALT = APP_SALT || 'default-dev-salt';
 
 /**
  * Generate a game-specific encryption key
  * Uses lobbyId + game start time + salt to create unique key per game
  */
 function generateGameKey(lobbyId, gameStartTime) {
-  const raw = `${APP_SALT}_${lobbyId}_${gameStartTime || 'default'}`;
+  const raw = `${EFFECTIVE_SALT}_${lobbyId}_${gameStartTime || 'default'}`;
   // Simple hash-like transformation
   let hash = 0;
   for (let i = 0; i < raw.length; i++) {
