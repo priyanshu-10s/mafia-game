@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
 import { gameService, LOBBIES } from '../services/gameService';
@@ -20,31 +22,83 @@ function LobbySelect() {
     }
   }, [user, authLoading, navigate]);
 
+  // Real-time listeners for all lobbies (replaces polling)
   useEffect(() => {
-    if (user) {
-      loadLobbiesStatus();
-      // Refresh every 5 seconds
-      const interval = setInterval(loadLobbiesStatus, 5000);
-      return () => clearInterval(interval);
-    }
+    if (!user || !db) return;
+
+    // Track how many lobbies have loaded for initial loading state
+    let loadedCount = 0;
+    const totalLobbies = LOBBIES.length;
+
+    // Set up real-time listeners for each lobby
+    const unsubscribes = LOBBIES.map((lobby) => {
+      const gameRef = doc(db, 'games', lobby.id);
+      
+      return onSnapshot(gameRef, (snapshot) => {
+        loadedCount++;
+        
+        if (!snapshot.exists()) {
+          setLobbiesStatus(prev => ({
+            ...prev,
+            [lobby.id]: {
+              status: 'empty',
+              playerCount: 0,
+              hostName: null
+            }
+          }));
+        } else {
+          const data = snapshot.data();
+          const players = Object.values(data.players || {});
+          const host = players.find(p => p.uid === data.hostId);
+          
+          setLobbiesStatus(prev => ({
+            ...prev,
+            [lobby.id]: {
+              status: data.status,
+              playerCount: players.length,
+              hostName: host?.name || null
+            }
+          }));
+        }
+        
+        // Mark loading complete when all lobbies have reported
+        if (loadedCount >= totalLobbies) {
+          setLoading(false);
+        }
+      }, (error) => {
+        console.error(`Lobby ${lobby.id} listener error:`, error);
+        loadedCount++;
+        if (loadedCount >= totalLobbies) {
+          setLoading(false);
+        }
+      });
+    });
+
+    // Cleanup all listeners on unmount
+    return () => {
+      unsubscribes.forEach(unsub => unsub());
+    };
   }, [user]);
 
-  const loadLobbiesStatus = async () => {
-    try {
-      const statuses = await gameService.getAllLobbiesStatus();
-      setLobbiesStatus(statuses);
-      
-      // Find which lobby the user is currently in
-      if (user) {
-        const userLobby = await gameService.findUserLobby(user.uid);
-        setCurrentUserLobby(userLobby);
+  // Real-time listener for user's current lobby membership
+  useEffect(() => {
+    if (!user || !db) return;
+
+    const userLobbyRef = doc(db, 'userLobbies', user.uid);
+    
+    const unsubscribe = onSnapshot(userLobbyRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setCurrentUserLobby(snapshot.data().lobbyId);
+      } else {
+        setCurrentUserLobby(null);
       }
-    } catch (error) {
-      console.error('Failed to load lobbies:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    }, (error) => {
+      console.error('User lobby listener error:', error);
+      setCurrentUserLobby(null);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const handleJoinLobby = async (lobbyId) => {
     if (!user || joining) return;
