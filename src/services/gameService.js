@@ -65,110 +65,163 @@ export const gameService = {
     }
   },
 
-  // Cleanup stale players from a lobby
+  // Cleanup stale players from a lobby using a transaction to avoid race conditions
   async cleanupStalePlayers(lobbyId) {
     if (!lobbyId) return { removed: [], markedDead: [] };
 
     const gameRef = doc(db, 'games', lobbyId);
-    const gameSnap = await getDoc(gameRef);
-
-    if (!gameSnap.exists()) return { removed: [], markedDead: [] };
-
-    const game = gameSnap.data();
-    const players = game.players || {};
-    const playerIds = Object.keys(players);
     
+    // Get current server time by writing to a SINGLE reusable document
+    // This prevents accumulation of orphan documents
+    const timeCheckRef = doc(db, 'serverTimeCheck', 'reference');
+    let serverNow = getServerTime(); // Fallback to client time
+    try {
+      await setDoc(timeCheckRef, { timestamp: serverTimestamp(), purpose: 'time_reference' });
+      const timeSnap = await getDoc(timeCheckRef);
+      serverNow = timeSnap.data()?.timestamp?.toMillis() || serverNow;
+      // Note: We intentionally DON'T delete this doc - it gets reused on next cleanup
+      // This means only 1 document exists in serverTimeCheck collection at most
+    } catch (e) {
+      console.warn('Could not get server time for cleanup, using client time:', e.message);
+    }
+
+    // Pre-fetch game doc and all userLobbies docs for players in the game
+    const preCheckSnap = await getDoc(gameRef);
+    if (!preCheckSnap.exists()) return { removed: [], markedDead: [] };
+    
+    const preCheckPlayers = preCheckSnap.data().players || {};
+    const playerIds = Object.keys(preCheckPlayers);
     if (playerIds.length === 0) return { removed: [], markedDead: [] };
 
-    const now = getServerTime();
-    const stalePlayerIds = [];
-
-    // Check each player's lastActive timestamp
-    for (const odMPNq9xxxxxxxJy5Ts1 of playerIds) {
-      const userLobbyRef = doc(db, 'userLobbies', odMPNq9xxxxxxxJy5Ts1);
-      const userLobbySnap = await getDoc(userLobbyRef);
-
-      if (userLobbySnap.exists()) {
-        const lastActive = userLobbySnap.data().lastActive?.toMillis() || 0;
-        if (now - lastActive > STALE_THRESHOLD_MS) {
-          stalePlayerIds.push(odMPNq9xxxxxxxJy5Ts1);
-        }
+    // Fetch all userLobbies in parallel
+    const userLobbyRefs = playerIds.map(id => doc(db, 'userLobbies', id));
+    const userLobbySnaps = await Promise.all(userLobbyRefs.map(ref => getDoc(ref)));
+    
+    // Build a map of playerId -> lastActive timestamp
+    const lastActiveMap = {};
+    playerIds.forEach((playerId, index) => {
+      const snap = userLobbySnaps[index];
+      if (snap.exists()) {
+        lastActiveMap[playerId] = snap.data().lastActive?.toMillis() || 0;
       } else {
-        // No userLobby doc means they're definitely stale
-        stalePlayerIds.push(odMPNq9xxxxxxxJy5Ts1);
+        lastActiveMap[playerId] = 0; // No doc means definitely stale
       }
-    }
+    });
 
-    if (stalePlayerIds.length === 0) return { removed: [], markedDead: [] };
-
-    const removed = [];
-    const markedDead = [];
-    const updatedPlayers = { ...players };
-
-    if (game.status === 'playing') {
-      // During active game: mark stale players as dead (not removed)
-      for (const odMPNq9xxxxxxxJy5Ts1 of stalePlayerIds) {
-        if (updatedPlayers[odMPNq9xxxxxxxJy5Ts1]?.isAlive) {
-          updatedPlayers[odMPNq9xxxxxxxJy5Ts1] = {
-            ...updatedPlayers[odMPNq9xxxxxxxJy5Ts1],
-            isAlive: false,
-            eliminatedReason: 'inactive'
-          };
-          markedDead.push(odMPNq9xxxxxxxJy5Ts1);
-        }
-        // Clear their userLobby tracking
-        await this.clearUserLobby(odMPNq9xxxxxxxJy5Ts1);
-      }
-
-      // Check if ALL players are now dead/stale
-      const anyAlive = Object.values(updatedPlayers).some(p => p.isAlive);
+    // Use transaction to atomically read game state and update
+    const result = await runTransaction(db, async (transaction) => {
+      const gameSnap = await transaction.get(gameRef);
       
-      if (!anyAlive) {
-        // Everyone is dead/stale - delete game so next joiner starts fresh
-        await deleteDoc(gameRef);
-        console.log(`Game ${lobbyId} deleted - all players were stale`);
-      } else {
-        // Check if game should end after removing stale players
-        const winner = checkWinCondition({ ...game, players: updatedPlayers });
+      if (!gameSnap.exists()) {
+        return { removed: [], markedDead: [], deleted: false };
+      }
 
-        if (winner) {
-          await updateDoc(gameRef, {
-            players: updatedPlayers,
-            status: 'ended',
-            winner,
-            phase: 'ended'
-          });
+      const game = gameSnap.data();
+      const players = game.players || {};
+      const currentPlayerIds = Object.keys(players);
+      
+      if (currentPlayerIds.length === 0) {
+        return { removed: [], markedDead: [], deleted: false };
+      }
+
+      // Determine stale players based on current game state
+      const stalePlayerIds = [];
+      for (const playerId of currentPlayerIds) {
+        // Only check players that were in our pre-fetch
+        // New players (joined after pre-fetch) won't be in lastActiveMap and are NOT stale
+        if (lastActiveMap.hasOwnProperty(playerId)) {
+          const lastActive = lastActiveMap[playerId];
+          const timeSinceActive = serverNow - lastActive;
+          if (timeSinceActive > STALE_THRESHOLD_MS) {
+            console.log(`Player ${playerId} is stale: inactive for ${Math.round(timeSinceActive / 60000)} minutes`);
+            stalePlayerIds.push(playerId);
+          }
+        }
+      }
+
+      if (stalePlayerIds.length === 0) {
+        return { removed: [], markedDead: [], deleted: false };
+      }
+
+      const removed = [];
+      const markedDead = [];
+      const updatedPlayers = { ...players };
+
+      if (game.status === 'playing') {
+        // During active game: mark stale players as dead (not removed)
+        for (const playerId of stalePlayerIds) {
+          if (updatedPlayers[playerId]?.isAlive) {
+            updatedPlayers[playerId] = {
+              ...updatedPlayers[playerId],
+              isAlive: false,
+              eliminatedReason: 'inactive'
+            };
+            markedDead.push(playerId);
+          }
+        }
+
+        // Check if ALL players are now dead/stale
+        const anyAlive = Object.values(updatedPlayers).some(p => p.isAlive);
+        
+        if (!anyAlive) {
+          // Everyone is dead/stale - delete game so next joiner starts fresh
+          transaction.delete(gameRef);
+          console.log(`Game ${lobbyId} deleted - all players were stale`);
+          return { removed: [], markedDead, deleted: true, stalePlayerIds };
         } else {
-          await updateDoc(gameRef, { players: updatedPlayers });
-        }
-      }
-    } else {
-      // In lobby or ended status: remove players completely
-      for (const odMPNq9xxxxxxxJy5Ts1 of stalePlayerIds) {
-        delete updatedPlayers[odMPNq9xxxxxxxJy5Ts1];
-        removed.push(odMPNq9xxxxxxxJy5Ts1);
-        await this.clearUserLobby(odMPNq9xxxxxxxJy5Ts1);
-      }
+          // Check if game should end after removing stale players
+          const winner = checkWinCondition({ ...game, players: updatedPlayers });
 
-      // Handle case where all players are removed
-      if (Object.keys(updatedPlayers).length === 0) {
-        await deleteDoc(gameRef);
+          if (winner) {
+            transaction.update(gameRef, {
+              players: updatedPlayers,
+              status: 'ended',
+              winner,
+              phase: 'ended'
+            });
+          } else {
+            transaction.update(gameRef, { players: updatedPlayers });
+          }
+        }
       } else {
-        // Transfer host if host was removed
-        const updates = { players: updatedPlayers };
-        if (stalePlayerIds.includes(game.hostId)) {
-          const newHostId = Object.keys(updatedPlayers)[0];
-          updates.hostId = newHostId;
+        // In lobby or ended status: remove players completely
+        for (const playerId of stalePlayerIds) {
+          delete updatedPlayers[playerId];
+          removed.push(playerId);
         }
-        await updateDoc(gameRef, updates);
+
+        // Handle case where all players are removed
+        if (Object.keys(updatedPlayers).length === 0) {
+          transaction.delete(gameRef);
+          return { removed, markedDead: [], deleted: true, stalePlayerIds };
+        } else {
+          // Transfer host if host was removed
+          const updates = { players: updatedPlayers };
+          if (stalePlayerIds.includes(game.hostId)) {
+            const newHostId = Object.keys(updatedPlayers)[0];
+            updates.hostId = newHostId;
+          }
+          transaction.update(gameRef, updates);
+        }
       }
+
+      return { removed, markedDead, deleted: false, stalePlayerIds };
+    });
+
+    // Clear userLobby tracking for stale players AFTER transaction commits
+    // This is done outside the transaction since userLobbies is a separate collection
+    // and we want to ensure the game state update succeeded first
+    if (result.stalePlayerIds && result.stalePlayerIds.length > 0) {
+      await Promise.all(
+        result.stalePlayerIds.map(playerId => this.clearUserLobby(playerId))
+      );
     }
 
-    if (removed.length > 0 || markedDead.length > 0) {
-      console.log(`Cleanup in ${lobbyId}: removed ${removed.length}, marked dead ${markedDead.length}`);
+    if (result.removed.length > 0 || result.markedDead.length > 0) {
+      console.log(`Cleanup in ${lobbyId}: removed ${result.removed.length}, marked dead ${result.markedDead.length}`);
     }
 
-    return { removed, markedDead };
+    return { removed: result.removed, markedDead: result.markedDead };
   },
 
   // Clear user's lobby tracking
@@ -252,39 +305,105 @@ export const gameService = {
     await this.cleanupStalePlayers(lobbyId);
 
     const gameRef = doc(db, 'games', lobbyId);
-    const gameSnap = await getDoc(gameRef);
+    
+    // Maximally distinct color palette - ordered by visual difference
+    // First 8 colors are highly distinct (for small games)
+    // Extended palette adds more variety for larger games
+    const colors = [
+      // Primary distinct colors (first 8 are maximally different)
+      '#E53935', // Red
+      '#1E88E5', // Blue  
+      '#43A047', // Green
+      '#FB8C00', // Orange
+      '#8E24AA', // Purple
+      '#E91E63', // Pink (replaced cyan - too similar to blue)
+      '#FFD600', // Yellow
+      '#6D4C41', // Brown
+      // Extended palette (still distinct from above)
+      '#00ACC1', // Cyan (moved here for larger games)
+      '#3949AB', // Indigo
+      '#00897B', // Teal
+      '#7CB342', // Lime
+      '#F4511E', // Deep Orange
+      '#5E35B1', // Deep Purple
+      '#039BE5', // Light Blue
+      '#C0CA33', // Yellow-Green
+      '#546E7A', // Blue Grey
+      '#EC407A', // Light Pink
+      '#26A69A', // Medium Teal
+      '#AB47BC', // Medium Purple
+    ];
 
-    if (!gameSnap.exists()) {
-      await setDoc(gameRef, {
-        status: 'lobby',
-        hostId: null,
-        players: {},
-        lobbyId: lobbyId,
-        settings: {
-          numMafia: 2,
-          hasDetective: true,
-          hasDoctor: true,
-          dayTimer: 5,
-          nightTimer: 1,
-          revealOnDeath: false,
-          mafiaProbability: {}
-        },
-        createdAt: serverTimestamp()
-      });
-    }
-
-    const gameData = gameSnap.exists() ? gameSnap.data() : {};
-    const players = gameData.players || {};
-    const isGameInProgress = gameData.status === 'playing' || gameData.status === 'ended';
-
-    if (!players[user.uid]) {
-      const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#E74C3C', '#3498DB', '#2ECC71', '#9B59B6', '#E67E22', '#1ABC9C', '#34495E', '#F39C12', '#E91E63', '#00BCD4', '#8BC34A'];
-      const usedColors = Object.values(players).map(p => p.color).filter(Boolean);
+    // Helper function to pick the most distinct available color
+    const pickDistinctColor = (usedColors) => {
       const availableColors = colors.filter(c => !usedColors.includes(c));
-      const color = availableColors[Math.floor(Math.random() * availableColors.length)] || colors[Math.floor(Math.random() * colors.length)];
+      if (availableColors.length === 0) {
+        // All colors used, just pick any
+        return colors[Math.floor(Math.random() * colors.length)];
+      }
+      // For small games (few used colors), pick from the first available in the ordered list
+      // This ensures early players get maximally distinct colors
+      if (usedColors.length < 8) {
+        return availableColors[0];
+      }
+      // For larger games, pick randomly from remaining
+      return availableColors[Math.floor(Math.random() * availableColors.length)];
+    };
+
+    // Use transaction to atomically join the game
+    const playerData = await runTransaction(db, async (transaction) => {
+      const gameSnap = await transaction.get(gameRef);
+
+      if (!gameSnap.exists()) {
+        // Create new game with this user as first player and host
+        const color = colors[0]; // First player gets first color
+        const newPlayer = {
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          color: color,
+          ready: false,
+          isAlive: true,
+          role: null,
+          isSpectator: false
+        };
+
+        transaction.set(gameRef, {
+          status: 'lobby',
+          hostId: user.uid,
+          players: { [user.uid]: newPlayer },
+          lobbyId: lobbyId,
+          settings: {
+            numMafia: 2,
+            hasDetective: true,
+            hasDoctor: true,
+            dayTimer: 5,
+            nightTimer: 1,
+            revealOnDeath: false,
+            mafiaProbability: {}
+          },
+          createdAt: serverTimestamp()
+        });
+
+        return newPlayer;
+      }
+
+      const gameData = gameSnap.data();
+      const players = { ...gameData.players };
+      const isGameInProgress = gameData.status === 'playing' || gameData.status === 'ended';
+
+      // If user already exists in the game, just return their data
+      if (players[user.uid]) {
+        return players[user.uid];
+      }
+
+      // Add new player with distinct color
+      const usedColors = Object.values(players).map(p => p.color).filter(Boolean);
+      const color = pickDistinctColor(usedColors);
 
       // If game is in progress, add as dead spectator (villager role)
-      players[user.uid] = {
+      const newPlayer = {
         uid: user.uid,
         name: user.displayName,
         email: user.email,
@@ -296,15 +415,19 @@ export const gameService = {
         isSpectator: isGameInProgress
       };
 
+      players[user.uid] = newPlayer;
+
       // Auto-assign as host if no host exists and game is not in progress
       const currentHostId = gameData.hostId;
       const shouldBecomeHost = !isGameInProgress && (!currentHostId || !players[currentHostId]);
 
-      await updateDoc(gameRef, {
+      transaction.update(gameRef, {
         players: players,
         ...(shouldBecomeHost && { hostId: user.uid })
       });
-    }
+
+      return newPlayer;
+    });
 
     // Track user's lobby membership in Firestore
     const userLobbyRef = doc(db, 'userLobbies', user.uid);
@@ -317,7 +440,7 @@ export const gameService = {
     // Store the selected lobby locally
     setSelectedLobby(lobbyId);
 
-    return players[user.uid];
+    return playerData;
   },
 
   async leaveGame(userId, lobbyId) {
@@ -325,24 +448,35 @@ export const gameService = {
     if (!lobbyId) return;
 
     const gameRef = doc(db, 'games', lobbyId);
-    const gameSnap = await getDoc(gameRef);
 
-    if (gameSnap.exists()) {
+    // Use transaction to atomically leave the game
+    await runTransaction(db, async (transaction) => {
+      const gameSnap = await transaction.get(gameRef);
+
+      if (!gameSnap.exists()) {
+        return; // Game doesn't exist, nothing to leave
+      }
+
       const gameData = gameSnap.data();
       const players = { ...gameData.players };
+      
+      if (!players[userId]) {
+        return; // User not in this game
+      }
+
       delete players[userId];
 
       if (Object.keys(players).length === 0) {
-        await deleteDoc(gameRef);
+        transaction.delete(gameRef);
       } else {
         const updates = { players };
         if (gameData.hostId === userId) {
           const newHostId = Object.keys(players)[0];
           updates.hostId = newHostId;
         }
-        await updateDoc(gameRef, updates);
+        transaction.update(gameRef, updates);
       }
-    }
+    });
 
     // Clear user's lobby tracking
     await this.clearUserLobby(userId);
@@ -356,17 +490,30 @@ export const gameService = {
     if (!lobbyId) throw new Error('No lobby selected');
 
     const gameRef = doc(db, 'games', lobbyId);
-    const gameSnap = await getDoc(gameRef);
 
-    if (!gameSnap.exists() || gameSnap.data().hostId !== hostId) {
-      throw new Error('Only host can kick players');
-    }
+    // Use transaction to atomically kick the player
+    await runTransaction(db, async (transaction) => {
+      const gameSnap = await transaction.get(gameRef);
 
-    const gameData = gameSnap.data();
-    const players = { ...gameData.players };
-    delete players[targetUserId];
+      if (!gameSnap.exists()) {
+        throw new Error('Game not found');
+      }
 
-    await updateDoc(gameRef, { players });
+      const gameData = gameSnap.data();
+      
+      if (gameData.hostId !== hostId) {
+        throw new Error('Only host can kick players');
+      }
+
+      const players = { ...gameData.players };
+      
+      if (!players[targetUserId]) {
+        throw new Error('Player not found in game');
+      }
+
+      delete players[targetUserId];
+      transaction.update(gameRef, { players });
+    });
 
     // Clear kicked user's lobby tracking
     await this.clearUserLobby(targetUserId);
@@ -401,45 +548,58 @@ export const gameService = {
     if (!lobbyId) throw new Error('No lobby selected');
 
     const gameRef = doc(db, 'games', lobbyId);
-    const gameSnap = await getDoc(gameRef);
-
-    if (!gameSnap.exists() || gameSnap.data().hostId !== hostId) {
-      throw new Error('Only host can start game');
-    }
-
-    const gameData = gameSnap.data();
-    const players = Object.values(gameData.players);
     
-    if (players.length < 4) {
-      throw new Error('Need at least 4 players to start');
-    }
-
-    const roles = this.assignRoles(players, gameData.settings);
-    const playersWithRoles = {};
-    
-    // Use a consistent start time for encryption key
+    // Use a consistent start time for encryption key (generated before transaction)
     const gameStartTime = getServerTime();
-    
-    players.forEach((player, index) => {
-      playersWithRoles[player.uid] = {
-        ...player,
-        role: encryptRole(roles[index], lobbyId, gameStartTime),
-        isAlive: true
-      };
-    });
 
-    const nightEndTime = gameStartTime + ((gameData.settings?.nightTimer || 1) * 60 * 1000);
+    // Use transaction to atomically start the game
+    await runTransaction(db, async (transaction) => {
+      const gameSnap = await transaction.get(gameRef);
 
-    await updateDoc(gameRef, {
-      status: 'playing',
-      phase: 'night',
-      round: 1,
-      players: playersWithRoles,
-      actions: {},
-      votes: {},
-      gameStartTime, // Store for decryption
-      nightStartTime: gameStartTime,
-      nightEndTime
+      if (!gameSnap.exists()) {
+        throw new Error('Game not found');
+      }
+
+      const gameData = gameSnap.data();
+
+      if (gameData.hostId !== hostId) {
+        throw new Error('Only host can start game');
+      }
+
+      if (gameData.status === 'playing') {
+        throw new Error('Game already in progress');
+      }
+
+      const players = Object.values(gameData.players);
+      
+      if (players.length < 4) {
+        throw new Error('Need at least 4 players to start');
+      }
+
+      const roles = this.assignRoles(players, gameData.settings);
+      const playersWithRoles = {};
+      
+      players.forEach((player, index) => {
+        playersWithRoles[player.uid] = {
+          ...player,
+          role: encryptRole(roles[index], lobbyId, gameStartTime),
+          isAlive: true
+        };
+      });
+
+      const nightEndTime = gameStartTime + ((gameData.settings?.nightTimer || 1) * 60 * 1000);
+
+      transaction.update(gameRef, {
+        status: 'playing',
+        phase: 'night',
+        round: 1,
+        players: playersWithRoles,
+        actions: {},
+        votes: {},
+        gameStartTime, // Store for decryption
+        nightStartTime: gameStartTime,
+        nightEndTime
+      });
     });
   },
 
@@ -597,50 +757,54 @@ export const gameService = {
     if (!lobbyId) throw new Error('No lobby selected');
 
     const gameRef = doc(db, 'games', lobbyId);
-    const gameSnap = await getDoc(gameRef);
 
-    if (!gameSnap.exists()) {
-      throw new Error('No game to reset');
-    }
+    // Use transaction to atomically reset the game
+    await runTransaction(db, async (transaction) => {
+      const gameSnap = await transaction.get(gameRef);
 
-    const gameData = gameSnap.data();
+      if (!gameSnap.exists()) {
+        throw new Error('No game to reset');
+      }
 
-    if (gameData.hostId !== hostId) {
-      throw new Error('Only host can reset game');
-    }
+      const gameData = gameSnap.data();
 
-    // Keep all players but reset their game-specific state
-    const resetPlayers = {};
-    Object.values(gameData.players || {}).forEach(player => {
-      resetPlayers[player.uid] = {
-        uid: player.uid,
-        name: player.name,
-        email: player.email,
-        photoURL: player.photoURL,
-        color: player.color,
-        ready: false,
-        isAlive: true,
-        role: null,
-        isSpectator: false
-      };
-    });
+      if (gameData.hostId !== hostId) {
+        throw new Error('Only host can reset game');
+      }
 
-    // Reset game to lobby state, keeping players and settings
-    await setDoc(gameRef, {
-      status: 'lobby',
-      hostId: hostId,
-      players: resetPlayers,
-      lobbyId: lobbyId,
-      settings: gameData.settings || {
-        numMafia: 2,
-        hasDetective: true,
-        hasDoctor: true,
-        dayTimer: 5,
-        nightTimer: 1,
-        revealOnDeath: false,
-        mafiaProbability: {}
-      },
-      createdAt: serverTimestamp()
+      // Keep all players but reset their game-specific state
+      const resetPlayers = {};
+      Object.values(gameData.players || {}).forEach(player => {
+        resetPlayers[player.uid] = {
+          uid: player.uid,
+          name: player.name,
+          email: player.email,
+          photoURL: player.photoURL,
+          color: player.color,
+          ready: false,
+          isAlive: true,
+          role: null,
+          isSpectator: false
+        };
+      });
+
+      // Reset game to lobby state, keeping players and settings
+      transaction.set(gameRef, {
+        status: 'lobby',
+        hostId: hostId,
+        players: resetPlayers,
+        lobbyId: lobbyId,
+        settings: gameData.settings || {
+          numMafia: 2,
+          hasDetective: true,
+          hasDoctor: true,
+          dayTimer: 5,
+          nightTimer: 1,
+          revealOnDeath: false,
+          mafiaProbability: {}
+        },
+        createdAt: serverTimestamp()
+      });
     });
     
     // Note: Don't clear userLobbies tracking - players stay in the lobby
